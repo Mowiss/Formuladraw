@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Formula Draw — éditeur de circuits</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E🏁%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --slate:#1d232b; --slate2:#262d37; --edge:#343d49; --txt:#e9ecef; --mut:#8e99a6;
+  --flag:#f5c400; --kerb:#d7262e; --sel:#31c6f5;
+  --f:'Saira Semi Condensed','Arial Narrow',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--slate);color:var(--txt);font:14px/1.4 var(--f)}
+#app{display:grid;grid-template-columns:58px 1fr 300px;grid-template-rows:52px 1fr 30px;height:100vh}
+header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 14px;background:#161b21;position:relative}
+header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;
+  background:repeating-linear-gradient(90deg,var(--kerb) 0 22px,#fff 22px 44px)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:.01em;white-space:nowrap}
+.logo small{font-weight:500;font-size:14px;color:var(--mut)}
+#name{background:transparent;border:1px solid transparent;color:var(--txt);font:600 17px var(--f);padding:4px 8px;border-radius:6px;min-width:0;flex:1;max-width:340px}
+#name:hover,#name:focus{border-color:var(--edge);outline:none;background:var(--slate2)}
+.hbtns{margin-left:auto;display:flex;gap:6px}
+#tools{grid-row:2;background:var(--slate);border-right:1px solid var(--edge);display:flex;flex-direction:column;gap:6px;padding:10px 7px}
+.tool{width:44px;height:44px;border-radius:10px;border:1px solid transparent;background:transparent;color:var(--txt);display:grid;place-items:center;cursor:pointer;position:relative;padding:0}
+.tool:hover{background:var(--slate2)}
+.tool.on{background:var(--flag);color:#1b1b1b}
+.tool kbd{position:absolute;right:3px;bottom:1px;font:600 10px var(--f);opacity:.6}
+.tool:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+#mapwrap{grid-row:2;position:relative;min-width:0}
+#map{position:absolute;inset:0;background:#4a7a3a}
+#cv{position:absolute;left:0;top:0;z-index:450}
+#side{grid-row:2;overflow:auto;background:var(--slate);border-left:1px solid var(--edge)}
+.sec{padding:12px 14px 14px;border-bottom:1px solid var(--edge)}
+.sec h3{margin:0 0 8px;font-size:15px;font-weight:700;color:#fff}
+.row{display:flex;align-items:center;gap:8px;margin:7px 0}
+.row>span.l{flex:0 0 96px;color:var(--mut)}
+.row input[type=range]{flex:1;min-width:0;accent-color:var(--flag)}
+.v{min-width:46px;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+button.b{background:var(--slate2);color:var(--txt);border:1px solid var(--edge);border-radius:7px;padding:6px 10px;font:500 14px var(--f);cursor:pointer}
+button.b:hover{border-color:#56627a}
+button.b.pri{background:var(--flag);color:#1b1b1b;border-color:var(--flag);font-weight:700}
+button.b.danger{border-color:#8a2a2e;color:#ffb4b7}button.b.danger:hover{background:#d7262e;border-color:#d7262e;color:#fff}
+button.b:disabled{opacity:.4;cursor:default}
+.btns{display:flex;flex-wrap:wrap;gap:6px}
+.seg{display:flex;border:1px solid var(--edge);border-radius:7px;overflow:hidden}
+.seg button{flex:1;background:var(--slate2);color:var(--txt);border:0;border-right:1px solid var(--edge);padding:5px 0;font:600 15px var(--f);cursor:pointer;min-width:0}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--flag);color:#1b1b1b}
+select,input[type=text],input[type=number]{background:var(--slate2);color:var(--txt);border:1px solid var(--edge);border-radius:7px;padding:5px 8px;font:14px var(--f)}
+input[type=number]{width:70px}
+label.ck{display:flex;align-items:center;gap:8px;margin:5px 0;cursor:pointer}
+label.ck input{accent-color:var(--flag);width:16px;height:16px}
+.hint{color:var(--mut);font-size:13px;margin:4px 0 0}
+#results{margin-top:6px}
+#results div{padding:5px 6px;border-radius:6px;cursor:pointer;color:#cfd6dd;font-size:13px}
+#results div:hover{background:var(--slate2)}
+.stats{display:grid;grid-template-columns:1fr auto;gap:3px 10px}
+.stats b{font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.stats span{color:var(--mut)}
+#status{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 14px;background:#161b21;border-top:1px solid var(--edge);color:#b8c1cb;font-size:13px;white-space:nowrap;overflow:hidden}
+#status .t{color:var(--flag);font-weight:700}
+#printDlg{position:fixed;inset:0;background:rgba(10,12,15,.6);z-index:2000;display:grid;place-items:center}
+#printDlg[hidden]{display:none}
+.pcard{background:var(--slate);border:1px solid var(--edge);border-radius:12px;padding:18px 20px;width:min(420px,92vw)}
+.pcard h3{margin:0 0 8px;font-size:18px}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#161b21;border:1px solid var(--flag);padding:7px 14px;border-radius:8px;z-index:900;display:none;font-weight:500}
+.leaflet-container{font-family:var(--f)}
+@media (max-width:820px){#app{grid-template-columns:52px 1fr;grid-template-rows:52px 1fr 240px 30px}#side{grid-column:1/-1;grid-row:3;border-left:0;border-top:1px solid var(--edge)}#status{grid-row:4}.logo small{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">
+      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true"><rect width="30" height="30" rx="6" fill="#fff"/><g fill="#1d232b"><rect x="0" y="0" width="10" height="10" rx="2"/><rect x="20" y="0" width="10" height="10"/><rect x="10" y="10" width="10" height="10"/><rect x="0" y="20" width="10" height="10"/><rect x="20" y="20" width="10" height="10"/></g></svg>
+      Formula Draw <small>éditeur de circuits</small>
+    </div>
+    <input id="name" type="text" value="Nouveau circuit" aria-label="Nom du circuit">
+    <div class="hbtns">
+      <button class="b" id="bUndo" title="Annuler (Ctrl+Z)">↶ Annuler</button>
+      <button class="b" id="bRedo" title="Rétablir (Ctrl+Y)">↷ Rétablir</button>
+      <button class="b pri" id="bPrint" title="Carnet à imprimer et assembler">🖨 Imprimer</button>
+      <button class="b danger" id="bClear" title="Tout supprimer (Maj+Suppr)">Tout supprimer</button>
+    </div>
+  </header>
+
+  <nav id="tools" aria-label="Outils">
+    <button class="tool" data-t="pen" title="Plume (P)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 2l5 9-5 11-5-11z"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/><path d="M12 13.6V22"/></svg><kbd>P</kbd></button>
+    <button class="tool" data-t="edit" title="Sélection directe (A)"><svg width="22" height="22" viewBox="0 0 24 24"><path d="M5 3l14 9-6.5 1.2L16 20l-2.6 1.3-3.4-6.8L5 19z" fill="#fff" stroke="#1b1b1b" stroke-width="1.2" stroke-linejoin="round"/></svg><kbd>A</kbd></button>
+    <button class="tool" data-t="arrow" title="Flèches de virage (F)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21V5M5.5 8.5L9 5l3.5 3.5"/><path d="M9 14c0-4 3-6 7-6M13.5 5.5L16.5 8l-2.5 3"/></svg><kbd>F</kbd></button>
+    <button class="tool" data-t="corner" title="Virage — zone + arrêts (C)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 22V3"/><path d="M6 4h12l-2.5 4L18 12H6" fill="currentColor" fill-opacity=".25"/></svg><kbd>C</kbd></button>
+    <button class="tool" data-t="start" title="Ligne de départ (D)"><svg width="22" height="22" viewBox="0 0 24 24"><g fill="currentColor"><rect x="3" y="6" width="4.5" height="4.5"/><rect x="12" y="6" width="4.5" height="4.5"/><rect x="7.5" y="10.5" width="4.5" height="4.5"/><rect x="16.5" y="10.5" width="4.5" height="4.5"/><rect x="3" y="15" width="4.5" height="4.5"/><rect x="12" y="15" width="4.5" height="4.5"/></g><rect x="3" y="6" width="18" height="13.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg><kbd>D</kbd></button>
+    <button class="tool" data-t="cut" title="Ciseaux — découper et redessiner un tronçon (X)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M8.5 7.8L20 17M8.5 16.2L20 7"/></svg><kbd>X</kbd></button>
+  </nav>
+
+  <div id="mapwrap"><div id="map"></div><div id="toast"></div></div>
+  <div id="printDlg" hidden>
+    <div class="pcard">
+      <h3>Imprimer le circuit</h3>
+      <p class="hint" style="margin-top:0">Un carnet de pages à découper et à assembler. L'échelle est calculée pour des cases de la taille du jeu (≈ 3 cm de long).</p>
+      <div class="row"><span class="l">Format</span><div class="seg" id="pFmt" style="flex:1"><button data-v="a4" class="on">A4</button><button data-v="a3">A3</button></div></div>
+      <div class="row"><span class="l">Décor</span><select id="pBg" style="flex:1"><option value="map">Fond de carte actuel</option><option value="grass">Herbe</option><option value="white">Blanc (économie d'encre)</option></select></div>
+      <div class="row"><span class="l">Marge d'assemblage</span><select id="pOv" style="flex:1"><option value="1">1 cm</option><option value="1.5" selected>1,5 cm</option><option value="2">2 cm</option></select></div>
+      <label class="ck"><input type="checkbox" id="pNum"> Numéros de case</label>
+      <div class="stats" id="pInfo" style="margin:10px 0"></div>
+      <div class="btns"><button class="b pri" id="pGo">Générer le PDF</button><button class="b" id="pCancel">Fermer</button></div>
+      <p class="hint" id="pProg"></p>
+    </div>
+  </div>
+
+  <aside id="side">
+    <div class="sec">
+      <h3>Trouver un lieu</h3>
+      <div class="row"><input type="text" id="q" placeholder="Monza, Spa, rue de Gap…" style="flex:1;min-width:0"><button class="b" id="bQ">Chercher</button></div>
+      <div id="results"></div>
+    </div>
+
+    <div class="sec" id="selSec">
+      <h3 id="selTitle">Sélection</h3>
+      <div id="selBody"></div>
+    </div>
+
+    <div class="sec">
+      <h3>Tracé</h3>
+      <div class="row"><span class="l">Cases de large (défaut)</span><div class="seg" id="lanes" style="flex:1"></div></div>
+      <div class="btns" style="margin:4px 0 10px"><button class="b" id="bAllW">Appliquer à tout le tracé</button></div>
+      <div class="row"><span class="l">Largeur de case</span><input type="range" id="laneW" min="2" max="10" step="0.1"><span class="v" id="laneWv"></span></div>
+      <div class="row"><span class="l">Longueur de case</span><input type="range" id="cellLen" min="3" max="25" step="0.5"><span class="v" id="cellLenv"></span></div>
+      <div class="btns"><button class="b" id="bLoop">Boucler le circuit</button><button class="b" id="bRev">Inverser le sens</button><button class="b" id="bFit">Centrer</button></div>
+      <div class="btns" style="margin-top:6px"><button class="b" id="bNewR">Nouvelle route</button><button class="b danger" id="bDelR">Supprimer cette route</button><button class="b danger" id="bClrC">Supprimer tous les virages</button></div>
+    </div>
+
+    <div class="sec">
+      <h3>Affichage</h3>
+      <div class="row"><span class="l">Fond</span><select id="base" style="flex:1"><option value="sat">Satellite (Esri, monde)</option><option value="ign">Photo aérienne IGN (France, très net)</option><option value="osm">Plan OpenStreetMap</option><option value="none">Herbe (sans carte)</option></select></div>
+      <div class="row"><span class="l">Opacité du fond</span><input type="range" id="baseOp" min="0" max="1" step="0.05" value="1"><span class="v" id="baseOpv">100 %</span></div>
+      <div class="row"><span class="l">Opacité du tracé</span><input type="range" id="trkOp" min="0.1" max="1" step="0.05" value="1"><span class="v" id="trkOpv">100 %</span></div>
+      <label class="ck"><input type="checkbox" id="oCells" checked> Cases</label>
+      <label class="ck"><input type="checkbox" id="oNum"> Numéros de case (1re voie)</label>
+      <label class="ck"><input type="checkbox" id="oHandles"> Toutes les poignées</label>
+    </div>
+
+    <div class="sec">
+      <h3>Fichier</h3>
+      <div class="btns"><button class="b" id="bSave">Enregistrer (.json)</button><button class="b" id="bOpen">Ouvrir…</button><button class="b" id="bNew">Nouveau</button></div>
+      <input type="file" id="fOpen" accept=".json,application/json" hidden>
+      <div class="row" style="margin-top:12px"><span class="l">Plateau PNG</span><input type="number" id="pxm" value="12" min="2" max="60" step="1"><span class="hint" style="margin:0">px / m</span></div>
+      <div class="row"><span class="l">Fond du plateau</span><select id="pngBg" style="flex:1"><option value="grass">Herbe</option><option value="white">Blanc</option><option value="none">Transparent</option></select></div>
+      <div class="btns"><button class="b pri" id="bPng">Exporter le plateau</button></div>
+    </div>
+
+    <div class="sec">
+      <h3>Circuit</h3>
+      <div class="stats" id="stats"></div>
+    </div>
+  </aside>
+
+  <footer id="status"><span class="t" id="stTool"></span><span id="stHint"></span></footer>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const R=6378137, KEY='formulaDraw.v1';
+const $=id=>document.getElementById(id);
+const mod=(a,b)=>((a%b)+b)%b;
+const hyp=(x,y)=>Math.hypot(x,y);
+const bz=(a,b,c,d,t)=>{const u=1-t;return u*u*u*a+3*u*u*t*b+3*u*t*t*c+t*t*t*d};
+
+/* ---------- état ---------- */
+function migrate(d){if(!(d.laneW>0)){d.laneW=Math.round(((d.defW||14)/(d.lanes||3))*10)/10;}delete d.defW;return d;}
+const newPath=()=>({anchors:[],closed:false,corners:[],start:0});
+/* S.anchors / closed / corners / start désignent la route active (S.paths[S.active]) */
+function wrap(o){
+  if(!Array.isArray(o.paths)){o.paths=[{anchors:o.anchors||[],closed:!!o.closed,corners:o.corners||[],start:o.start||0}];o.startPath=0;}
+  ['anchors','closed','corners','start'].forEach(k=>{delete o[k];Object.defineProperty(o,k,{get(){return this.paths[this.active][k];},set(v){this.paths[this.active][k]=v;},enumerable:false,configurable:true});});
+  if(!o.paths.length)o.paths.push(newPath());
+  if(!(o.active>=0&&o.active<o.paths.length))o.active=0;
+  if(!(o.startPath>=0&&o.startPath<o.paths.length))o.startPath=0;
+  return o;
+}
+function blank(){return wrap({name:'Nouveau circuit',origin:null,paths:[newPath()],active:0,startPath:0,bridges:{},lanes:3,cellLen:7,laneW:4.7,view:null});}
+function load(d){const o=blank(),keep=['name','origin','lanes','cellLen','laneW','defW','view','bridges'];keep.forEach(k=>{if(d[k]!==undefined)o[k]=d[k];});
+  if(Array.isArray(d.paths)){o.paths=d.paths;o.active=d.active;o.startPath=d.startPath;}else o.paths=[{anchors:d.anchors||[],closed:!!d.closed,corners:d.corners||[],start:d.start||0}];
+  return wrap(migrate(o));}
+let S=blank();
+const emptyG=()=>({pts:[],total:0,segs:0,cz:[],runs:[],cells:[],stairs:[]});
+let G=emptyG(),Gs=[G],penCont=true;
+function withPath(p,fn){const sa=S.active,sg=G;S.active=p;G=Gs[p]||emptyG();try{return fn();}finally{S.active=sa;G=sg;}}
+function setActive(p){if(p===S.active)return;S.active=p;G=Gs[p]||emptyG();sel=-1;selSeg=-1;selCorner=-1;pendingCorner=null;cutPending=null;redraw=null;penCont=false;updHint();}
+function cleanup(){
+  for(let p=S.paths.length-1;p>=0;p--){if(p!==S.active&&!S.paths[p].anchors.length){S.paths.splice(p,1);if(S.active>p)S.active--;if(S.startPath>p)S.startPath--;else if(S.startPath===p)S.startPath=0;}}
+  if(S.startPath>=S.paths.length)S.startPath=0;
+}
+let attach=[],attachInfo=[],selfTails=[],flares=[];
+/* morceau de la route q autour de l'abscisse sJ (pour ne traiter que la jonction, pas les croisements ailleurs) */
+const nearS=(q,sJ,R)=>{const g=Gs[q],Tq=g.total,cl=S.paths[q].closed;return x=>{let d=x-sJ;if(cl)d=mod(d+Tq/2,Tq)-Tq/2;return Math.abs(d)<=R;};};
+function polyNear(c,T,q,sJ,R){const f=nearS(q,sJ,R);withPath(q,()=>roadPolyWhere(c,T,f));}
+function computeFlares(){
+  const out=[];
+  const inRoad=(gq,x,y)=>{for(const t of gq.pts)if(hyp(t.x-x,t.y-y)<t.w/2)return true;return false;};
+  S.paths.forEach((pp,p)=>{const g=Gs[p];if(pp.closed||!g||g.pts.length<2)return;const P=g.pts,N=P.length,T=g.total;
+    [true,false].forEach(atStart=>{
+      const e=atStart?P[0]:P[N-1];
+      Gs.forEach((gq,q)=>{if(q===p||!gq||gq.pts.length<2)return;
+        let best=null;for(const t of gq.pts){const d=hyp(t.x-e.x,t.y-e.y);if(!best||d<best.d)best={d,t};}
+        if(!best||best.d>=best.t.w/2+.5)return;
+        // distance (le long de la route) jusqu'au bord de l'autre route
+        let dEdge=0,kk=atStart?0:N-1;
+        while(kk>=0&&kk<N&&inRoad(gq,P[kk].x,P[kk].y)){kk+=atStart?1:-1;}
+        if(kk<0||kk>=N)return;dEdge=atStart?P[kk].s:T-P[kk].s;
+        const D=1.5*S.cellLen,pe=P[kk];
+        let tq=null;for(const t of gq.pts){const d=hyp(t.x-pe.x,t.y-pe.y);if(!tq||d<tq.d)tq={d,t};}
+        const tm=tq.t,sJ=tm.s,sgM=((pe.x-tm.x)*tm.nx+(pe.y-tm.y)*tm.ny)>=0?1:-1;
+        const nlb=withPath(p,()=>segLanes(atStart?0:G.segs-1));
+        const Tq=gq.total,closedQ=S.paths[q].closed,rel=x=>closedQ?mod(x-sJ+Tq/2,Tq)-Tq/2:x-sJ;
+        const cells=gq.cells.filter(cl=>cl.j===(sgM>0?cl.nl-1:0)).map(cl=>({a:rel(cl.sa),b:rel(cl.sa)+(cl.sb-cl.sa)})).filter(c=>Math.abs(c.a)<60).sort((u,v)=>u.a-v.a);
+        let i0=cells.findIndex(c=>c.a<=0&&c.b>=0),rels=null;
+        if(i0>=0&&cells.length>=nlb){
+          let st=i0-Math.floor((nlb-1)/2);if(nlb%2===0){const c=cells[i0];if((c.a+c.b)/2<0)st=i0-nlb/2+1;else st=i0-nlb/2;}
+          st=Math.max(0,Math.min(cells.length-nlb,st));
+          rels=[cells[st].a];for(let i=0;i<nlb;i++)rels.push(cells[st+i].b);
+        }else{rels=[];for(let i=0;i<=nlb;i++)rels.push((i-nlb/2)*S.cellLen);}
+        const B=withPath(q,()=>rels.map(r=>lat(at(sJ+r),sgM*.5)));
+        // quel côté de la route arrivante va vers quel bout
+        const pin=withPath(p,()=>at(atStart?dEdge+D:T-dEdge-D)),Lp=lat(pin,.5),Rp=lat(pin,-.5);
+        const proj=pt=>(pt[0]-tm.x)*tm.tx+(pt[1]-tm.y)*tm.ty;
+        const flip=!(proj(Lp)>proj(Rp));
+        (out[p]=out[p]||[]).push({atStart,dEdge,D,B,flip,nl:nlb});
+      });
+    });
+  });
+  return out;
+}
+function buildAll(){cleanup();Gs=[];flares=[];for(let p=0;p<S.paths.length;p++)withPath(p,()=>{build();Gs[p]=G;});
+  // une route qui arrive sur une autre s'évase : ses voies rejoignent les cases du bord de l'autre route
+  flares=computeFlares();
+  flares.forEach((f,p)=>{if(f&&f.length)withPath(p,()=>{build();Gs[p]=G;});});
+  G=Gs[S.active];
+  attachInfo=S.paths.map(()=>[]);
+  attach=S.paths.map((pp,p)=>{const set=new Set();if(pp.closed||pp.anchors.length<2)return set;
+    [pp.anchors[0],pp.anchors[pp.anchors.length-1]].forEach(e=>Gs.forEach((g,q)=>{if(q===p||!g||g.pts.length<2)return;
+      let best=1e9,w=0,sJ=0;for(const t of g.pts){const d=hyp(t.x-e.x,t.y-e.y);if(d<best){best=d;w=t.w;sJ=t.s;}}
+      if(best<w/2+.5){set.add(q);attachInfo[p].push({q,sJ,R:3*Math.max(w,Gs[p].pts[0].w)+2*S.cellLen});}}));
+    return set;});
+  selfTails=S.paths.map((pp,p)=>{const g=Gs[p],out=[];if(!g||g.pts.length<2)return out;
+    const T=g.total,P=g.pts;
+    (pp.closed?[]:[[P[0],0],[P[P.length-1],T]]).forEach(([e,se])=>{
+      const L0=Math.min(3*e.w,T/3);let hit=false;
+      for(const t of P){if(Math.abs(t.s-se)<L0+e.w)continue;if(hyp(t.x-e.x,t.y-e.y)<t.w/2+.5){hit=true;break;}}
+      if(hit)out.push(se===0?{sa:0,sb:L0}:{sa:T-L0,sb:T});
+    });
+    // portions qui recouvrent une autre partie de la même route
+    const N=P.length,W=Math.max(...P.map(t=>t.w)),grid=new Map(),key=(x,y)=>Math.floor(x/W)+','+Math.floor(y/W);
+    P.forEach((t,i)=>{const kk=key(t.x,t.y);if(!grid.has(kk))grid.set(kk,[]);grid.get(kk).push(i);});
+    const mark=new Uint8Array(N);
+    P.forEach((t,i)=>{const gx=Math.floor(t.x/W),gy=Math.floor(t.y/W);
+      for(let dx=-1;dx<=1&&!mark[i];dx++)for(let dy=-1;dy<=1&&!mark[i];dy++){const L1=grid.get((gx+dx)+','+(gy+dy));if(!L1)continue;
+        for(const j of L1){const u=P[j];let ds=Math.abs(t.s-u.s);if(pp.closed)ds=Math.min(ds,T-ds);
+          if(ds<2.5*Math.max(t.w,u.w))continue;if(t.s>u.s&&Math.abs(t.tx*u.tx+t.ty*u.ty)>.85&&hyp(t.x-u.x,t.y-u.y)<(t.w+u.w)/2*.95){mark[i]=1;break;}}}});
+    let st=-1;
+    for(let i=0;i<=N;i++){if(i<N&&mark[i]){if(st<0)st=i;}else if(st>=0){out.push({sa:Math.max(0,P[st].s-S.cellLen),sb:Math.min(T,P[i-1].s+S.cellLen)});st=-1;}}
+    out.sort((a,b)=>a.sa-b.sa);const mg=[];out.forEach(t=>{const l=mg[mg.length-1];if(l&&t.sa<=l.sb)l.sb=Math.max(l.sb,t.sb);else mg.push({...t});});
+    return mg;});
+  markJunctionCells();
+  findCrossings();
+}
+/* Aux jonctions, une case dont il ne reste qu'un éclat hors de l'autre route est fusionnée
+   avec sa voisine (on efface le trait qui les sépare) : les cases restent entières. */
+/* ---------- croisements (ponts) ---------- */
+let crossings=[],bridgeBoxes=[];
+function findCrossings(){
+  crossings=[];const CS=12,grid=new Map();
+  Gs.forEach((g,p)=>{if(!g||g.pts.length<2)return;const P=g.pts;
+    for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i];
+      for(let gx=Math.floor(Math.min(a.x,b.x)/CS);gx<=Math.floor(Math.max(a.x,b.x)/CS);gx++)
+        for(let gy=Math.floor(Math.min(a.y,b.y)/CS);gy<=Math.floor(Math.max(a.y,b.y)/CS);gy++){const key=gx+','+gy;if(!grid.has(key))grid.set(key,[]);grid.get(key).push({p,i});}}});
+  const seen=new Set(),found=[];
+  grid.forEach(L0=>{for(let u=0;u<L0.length;u++)for(let v=u+1;v<L0.length;v++){
+    let A=L0[u],B=L0[v];if(A.p===B.p&&Math.abs(A.i-B.i)<3)continue;
+    if(A.p>B.p||(A.p===B.p&&A.i>B.i)){const t=A;A=B;B=t;}
+    const id=A.p+':'+A.i+'/'+B.p+':'+B.i;if(seen.has(id))continue;seen.add(id);
+    const GA=Gs[A.p],GB=Gs[B.p],a0=GA.pts[A.i-1],a1=GA.pts[A.i],b0=GB.pts[B.i-1],b1=GB.pts[B.i];
+    const rx=a1.x-a0.x,ry=a1.y-a0.y,sx=b1.x-b0.x,sy=b1.y-b0.y,den=rx*sy-ry*sx;if(Math.abs(den)<1e-9)continue;
+    const qx=b0.x-a0.x,qy=b0.y-a0.y,t=(qx*sy-qy*sx)/den,w=(qx*ry-qy*rx)/den;if(t<0||t>1||w<0||w>1)continue;
+    const sA=a0.s+(a1.s-a0.s)*t,sB=b0.s+(b1.s-b0.s)*w,x=a0.x+rx*t,y=a0.y+ry*t;
+    const ends=(pp,gg,ss)=>!S.paths[pp].closed&&(ss<a0.w||ss>gg.total-a0.w);
+    if(ends(A.p,GA,sA)||ends(B.p,GB,sB))continue; // jonction, pas un croisement
+    if(A.p===B.p){let d=Math.abs(sA-sB);if(S.paths[A.p].closed)d=Math.min(d,GA.total-d);if(d<3*a0.w)continue;}
+    if(found.some(f=>hyp(f.x-x,f.y-y)<2))continue;
+    found.push({a:{p:A.p,s:sA},b:{p:B.p,s:sB},x,y,key:Math.round(x/4)+':'+Math.round(y/4)});
+  }});
+  const br=S.bridges||{};
+  found.forEach(f=>{f.top=br[f.key]!=null?br[f.key]:1;});
+  crossings=found;
+}
+function renderBridges(c,T,k,o){
+  crossings.forEach(cr=>{
+    const up=cr.top?cr.b:cr.a,lo=cr.top?cr.a:cr.b;
+    const tl=withPath(lo.p,()=>at(lo.s)),tu=withPath(up.p,()=>at(up.s));
+    const sn=Math.max(.25,Math.abs(tu.tx*tl.ty-tu.ty*tl.tx)),cs=Math.abs(tu.tx*tl.tx+tu.ty*tl.ty);
+    const span=tl.w/2/sn+tu.w/2*cs/sn+2.5;
+    withPath(up.p,()=>{
+      const poly=()=>{const n=Math.max(4,Math.ceil(2*span/.5)),L=[],R=[];
+        for(let i=0;i<=n;i++){const q=at(up.s-span+2*span*i/n);{const l=lat(q,.5),r=lat(q,-.5);L.push(T(l[0],l[1]));R.push(T(r[0],r[1]));}}
+        L.forEach((X,i)=>i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]));for(let i=R.length-1;i>=0;i--)c.lineTo(R[i][0],R[i][1]);c.closePath();};
+      // bords (côtés seulement), puis bitume : la route du dessus recouvre simplement l'autre
+      const edges=()=>{const n=Math.max(4,Math.ceil(2*span/.5));[.5,-.5].forEach(f=>{c.beginPath();for(let i=0;i<=n;i++){const q=at(up.s-span+2*span*i/n),m=lat(q,f),X=T(m[0],m[1]);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);}c.stroke();});};
+      // ombre portée de la route du dessus, seulement sur la route du dessous
+      c.save();c.beginPath();polyNear(c,T,lo.p,lo.s,tu.w/2/sn+tl.w/2*cs/sn+4);c.clip();
+      c.shadowColor='rgba(0,0,0,.55)';c.shadowBlur=Math.max(6,1.4*k);c.shadowOffsetX=Math.max(2,.6*k);c.shadowOffsetY=Math.max(3,.9*k);
+      c.beginPath();poly();c.fillStyle='#c9ccd0';c.fill();c.restore();
+      c.lineJoin='round';c.lineWidth=2*Math.max(1,.3*k);c.strokeStyle='#fff';edges();
+      c.beginPath();poly();c.fillStyle='#c9ccd0';c.fill();
+      c.lineWidth=Math.max(1,.3*k);edges();
+      c.save();c.beginPath();poly();c.clip();
+      const Tt=G.total;
+      renderTrack(c,T,k,Object.assign({},o,{sf:x=>{let d=x-up.s;if(S.closed)d=mod(d+Tt/2,Tt)-Tt/2;return Math.abs(d)<=span+S.cellLen;}}),'detail',up.p);
+      c.restore();
+    });
+  });
+}
+function markJunctionCells(){
+  S.paths.forEach((pp,p)=>{const g=Gs[p];if(!g)return;g.cells.forEach(c=>{c.sliver=false;c.hideSa=false;c.hideSb=false;});
+    if(g.pts.length<2)return;
+    const tests=[];
+    const inRoad=(gq,x,y,pred)=>{for(const t of gq.pts){if(pred&&!pred(t.s))continue;if(hyp(t.x-x,t.y-y)<t.w/2)return true;}return false;};
+    const P=g.pts,T=g.total;
+    if(attachInfo[p]&&attachInfo[p].length){
+      [[P[0],0],[P[P.length-1],T]].forEach(([e,se])=>attachInfo[p].forEach(ai=>{const q=ai.q,gq=Gs[q];if(!gq)return;const okq=nearS(q,ai.sJ,ai.R);
+        let best=1e9,w=0;for(const t of gq.pts){if(!okq(t.s))continue;const d=hyp(t.x-e.x,t.y-e.y);if(d<best){best=d;w=t.w;}}if(best>=w/2+.5)return;
+        const Ln=4*Math.max(w,e.w)+2*S.cellLen;tests.push({near:x=>Math.abs(x-se)<Ln,inside:(x,y)=>inRoad(gq,x,y,okq)});}));
+    }
+    (selfTails[p]||[]).forEach(t=>{const inT=x=>x>=t.sa&&x<=t.sb;tests.push({near:inT,inside:(x,y)=>inRoad(g,x,y,z=>!(z>=t.sa&&z<=t.sb))});});
+    if(!tests.length)return;
+    withPath(p,()=>{
+      g.cells.forEach(cl=>{
+        const ts=tests.filter(t=>t.near(cl.mid));if(!ts.length)return;
+        let out=0;
+        for(const u of [.2,.5,.8]){const q=at(cl.sa+(cl.sb-cl.sa)*u);
+          for(const f of [cl.lo+(cl.hi-cl.lo)*.2,(cl.lo+cl.hi)/2,cl.lo+(cl.hi-cl.lo)*.8]){const [x,y]=lat(q,f);if(!ts.some(t=>t.inside(x,y)))out++;}}
+        if(out<5)cl.sliver=true;
+      });
+      g.runs.forEach(r=>r.cells.forEach(C=>C.forEach((cl,k)=>{if(!cl.sliver)return;
+        const nx=C[k+1],pv=C[k-1];if(nx&&!nx.sliver)nx.hideSa=true;if(pv&&!pv.sliver)pv.hideSb=true;})));
+    });
+  });
+}
+let tool='pen',sel=-1,selCorner=-1,pendingCorner=null,cutPending=null,redraw=null,selSeg=-1,drag=null,mouse=null,spacePan=false,flagBoxes=[];
+const opt={cells:true,numbers:false,handles:false};
+const undoS=[],redoS=[];
+
+/* ---------- carte ---------- */
+const map=L.map('map',{boxZoom:false,doubleClickZoom:false,zoomSnap:0.25,wheelPxPerZoomLevel:90,maxZoom:21}).setView([43.7347,7.4206],16);
+L.control.scale({imperial:false}).addTo(map);
+const layers={
+  sat:L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxNativeZoom:19,maxZoom:21,attribution:'Imagerie © Esri, Maxar, Earthstar Geographics'}),
+  ign:L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',{maxNativeZoom:19,maxZoom:21,attribution:'Orthophotos © IGN'}),
+  osm:L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxNativeZoom:19,maxZoom:21,attribution:'© OpenStreetMap'})
+};
+let baseKey='sat'; layers.sat.addTo(map);
+let tileErr=0,tileOk=0,warned=false;
+Object.values(layers).forEach(l=>{
+  l.on('tileload',()=>tileOk++);
+  l.on('tileerror',()=>{tileErr++;if(!warned&&tileErr>6&&tileOk===0){warned=true;
+    toast('Les photos ne se chargent pas : ouvre le fichier téléchargé dans Chrome/Firefox avec internet');}});
+});
+
+const cv=document.createElement('canvas'); cv.id='cv'; map.getContainer().appendChild(cv);
+L.DomEvent.disableClickPropagation(cv);
+const ctx=cv.getContext('2d');
+function sizeCv(){const r=map.getContainer().getBoundingClientRect(),d=devicePixelRatio||1;cv.width=Math.round(r.width*d);cv.height=Math.round(r.height*d);cv.style.width=r.width+'px';cv.style.height=r.height+'px';draw();}
+new ResizeObserver(()=>{map.invalidateSize();sizeCv();}).observe($('mapwrap'));
+map.on('move',draw);
+map.on('zoomstart',()=>cv.style.visibility='hidden');
+map.on('zoomend',()=>{cv.style.visibility='visible';draw();});
+map.on('moveend',scheduleSave);
+
+/* repère local : mètres Mercator × cos(lat0) → transformation linéaire vers l'écran */
+function view(){
+  if(!S.origin) return null;
+  const o=map.latLngToContainerPoint([S.origin.lat,S.origin.lng]);
+  const k=256*Math.pow(2,map.getZoom())/(2*Math.PI*R)/Math.cos(S.origin.lat*Math.PI/180);
+  return {k,T:(x,y)=>[o.x+x*k,o.y-y*k],inv:(X,Y)=>[(X-o.x)/k,(o.y-Y)/k]};
+}
+function toLatLng(x,y){
+  const c=Math.cos(S.origin.lat*Math.PI/180),m0=L.CRS.EPSG3857.project(L.latLng(S.origin.lat,S.origin.lng));
+  return L.CRS.EPSG3857.unproject(L.point(m0.x+x/c,m0.y+y/c));
+}
+
+/* ---------- géométrie ---------- */
+function build(){
+  const A=S.anchors,n=A.length;
+  G={pts:[],total:0,segs:0,cz:[],runs:[],cells:[],stairs:[]};
+  if(n<2) return;
+  const segs=S.closed?n:n-1; G.segs=segs;
+  const raw=[];
+  for(let i=0;i<segs;i++){
+    const a=A[i],b=A[(i+1)%n];
+    const x0=a.x,y0=a.y,x1=a.x+a.ho.x,y1=a.y+a.ho.y,x2=b.x+b.hi.x,y2=b.y+b.hi.y,x3=b.x,y3=b.y;
+    const ap=hyp(x1-x0,y1-y0)+hyp(x2-x1,y2-y1)+hyp(x3-x2,y3-y2);
+    const m=Math.max(12,Math.min(800,Math.ceil(ap/0.7)));
+    for(let j=0;j<m;j++){const t=j/m,e=t*t*(3-2*t);raw.push({x:bz(x0,x1,x2,x3,t),y:bz(y0,y1,y2,y3,t),g:i+t,w:segLanes(i)*S.laneW});}
+  }
+  const last=S.closed?A[0]:A[n-1];
+  raw.push({x:last.x,y:last.y,g:segs,w:segLanes(segs-1)*S.laneW});
+  const rf=filletCorners(raw,segs,n);
+  if(rf!==raw){raw.length=0;rf.forEach(q=>raw.push(q));}
+  const P=[raw[0]]; raw[0].s=0; let s=0;
+  for(let i=1;i<raw.length;i++){
+    const p=raw[i],q=P[P.length-1],d=hyp(p.x-q.x,p.y-q.y);
+    if(d<1e-4){ if(i===raw.length-1){q.g=p.g;} continue; }
+    s+=d; p.s=s; P.push(p);
+  }
+  if(P.length<2) return;
+  const N=P.length;
+  for(let i=0;i<N;i++){
+    let a=P[Math.max(0,i-1)],b=P[Math.min(N-1,i+1)];
+    if(S.closed&&(i===0||i===N-1)){a=P[N-2];b=P[1];}
+    let tx=b.x-a.x,ty=b.y-a.y; const l=hyp(tx,ty)||1; tx/=l;ty/=l;
+    P[i].tx=tx;P[i].ty=ty;P[i].nx=-ty;P[i].ny=tx;
+  }
+  /* bords de la route : au fond d'un virage trop serré, le bord intérieur se replie en boucle.
+     On coupe la boucle → le bord intérieur forme une pointe, et les voies/cases s'y rejoignent en éventail. */
+  const segX=(a,b,c,d)=>{const rx=b.x-a.x,ry=b.y-a.y,sx=d.x-c.x,sy=d.y-c.y,den=rx*sy-ry*sx;if(Math.abs(den)<1e-12)return null;
+    const qx=c.x-a.x,qy=c.y-a.y,t=(qx*sy-qy*sx)/den,u=(qx*ry-qy*rx)/den;return t>=0&&t<=1&&u>=0&&u<=1?{x:a.x+rx*t,y:a.y+ry*t}:null;};
+  /* Virage plus serré que la demi-largeur : le bord intérieur se replie en boucle. On coupe la boucle
+     (pointe P) et, sur cette portion, la route s'enroule autour de P : voies concentriques d'épaisseur
+     constante, traits de case rayonnants. La route est repoussée vers l'extérieur juste ce qu'il faut. */
+  G.collapse={l:[],r:[]};
+  P.forEach(p=>{p.lp=null;});
+  [1,-1].forEach(sg=>{
+    const O=P.map(p=>({x:p.x+p.nx*sg*p.w/2,y:p.y+p.ny*sg*p.w/2}));
+    let i=0;
+    while(i<N-1){
+      let hit=null,acc=0;
+      for(let j=i+2;j<N-1;j++){acc+=P[j].s-P[j-1].s;if(acc>4*P[i].w+6)break;const X=segX(O[i],O[i+1],O[j],O[j+1]);if(X)hit={j,X};}
+      if(hit){for(let k=i+1;k<=hit.j;k++)if(!P[k].lp)P[k].lp={x:hit.X.x,y:hit.X.y,sg};
+        G.collapse[sg>0?'l':'r'].push({sa:P[i].s,sb:P[hit.j+1].s});i=hit.j+1;}else i++;
+    }
+  });
+  P.forEach(p=>{p.jn=null;});
+  (flares[S.active]||[]).forEach(F=>P.forEach(p=>{const d=F.atStart?p.s:s-p.s,x=(F.dEdge+F.D-d)/F.D;if(x<=0)return;
+    const w=x>=1?1:x*x*(3-2*x);if(!p.jn||w>p.jn.w)p.jn={w,B:F.B,flip:F.flip,nl:F.nl};}));
+  P.forEach(p=>{const l=lat(p,.5),r=lat(p,-.5);p.hl=hyp(l[0]-p.x,l[1]-p.y);p.hr=hyp(r[0]-p.x,r[1]-p.y);});
+  G.pts=P; G.total=s;
+  // zones de virage
+  G.cz=S.corners.map(c=>{
+    let s1=gToS(c.g1),s2=gToS(c.g2);
+    if(!S.closed&&s2<s1){const t=s1;s1=s2;s2=t;}
+    const len=S.closed?mod(s2-s1,G.total):s2-s1;
+    const a=at(s1),b=at(s1+len);let turn=a.tx*b.ty-a.ty*b.tx;
+    if(Math.abs(turn)<.02){const u=at(s1+len*.35),v=at(s1+len*.65);turn=u.tx*v.ty-u.ty*v.tx;}
+    return {s1,len,stops:c.stops,name:c.name||'',turn};
+  });
+  buildRuns();
+  // numéro de chaque case dans son virage (voie + rang) -> flèche choisie ou flèche par défaut
+  G.cz.forEach((z,ci)=>{const byLane={};
+    G.cells.forEach(cl=>{if(cl.corner!==ci)return;(byLane[cl.j]=byLane[cl.j]||[]).push(cl);});
+    Object.keys(byLane).forEach(j=>{byLane[j].sort((a,b)=>mod(a.mid-z.s1,G.total||1)-mod(b.mid-z.s1,G.total||1)).forEach((cl,r)=>{
+      cl.akey=j+':'+r;const ar=S.corners[ci].arrows;cl.arrow=ar&&ar[cl.akey]!=null?ar[cl.akey]:0;});});
+  });
+  G.cz.forEach((z,ci)=>{
+    const cs=G.cells.filter(cl=>cl.corner===ci),T=G.total,ref=z.s1+z.len/2;
+    const rel=x=>S.closed?mod(x-ref+T/2,T)-T/2:x-ref;
+    const span=list=>{if(!list.length)return null;let a=1e9,b=-1e9;list.forEach(cl=>{a=Math.min(a,rel(cl.sa));b=Math.max(b,rel(cl.sa)+(cl.sb-cl.sa));});return {s1:ref+a,len:b-a};};
+    z.kerb={l:span(cs.filter(cl=>cl.j===cl.nl-1)),r:span(cs.filter(cl=>cl.j===0))};
+    const byJ={};cs.forEach(cl=>{byJ[cl.j]=(byJ[cl.j]||0)+1;});const v=Object.values(byJ);
+    z.cmin=v.length?Math.min(...v):0;z.cmax=v.length?Math.max(...v):0;
+  });
+  const pa=S.paths[S.active].arrows||{};
+  G.cells.forEach(cl=>{if(cl.corner>=0)return;cl.akey=cl.g1+'|'+cl.j+'|'+cl.rk;cl.arrow=pa[cl.akey]!=null?pa[cl.akey]:3;});
+}
+/* Angle vif sur un point : la route tourne autour d'un rayon mini (demi-largeur + une demi-case)
+   pour que la voie intérieure ne se replie pas et que les cases ne se chevauchent pas. */
+function filletCorners(raw,segs,n){
+  const closed=S.closed,Lr=closed?raw.slice(0,-1):raw,M=Lr.length;if(M<3)return raw;
+  const get=k=>closed?Lr[mod(k,M)]:Lr[k],inb=k=>closed||(k>=0&&k<M);
+  const isA=p=>Math.abs(p.g-Math.round(p.g))<1e-9;
+  const idxOf=[];Lr.forEach((q,k)=>{if(isA(q))idxOf[Math.round(q.g)]=k;});
+  const walk=(k,dir,lim,stopAtAnchor)=>{let acc=0,u=k;while(acc<lim){const nx=u+dir;if(!inb(nx)||Math.abs(nx-k)>=M)break;acc+=hyp(get(nx).x-get(u).x,get(nx).y-get(u).y);u=nx;if(stopAtAnchor&&isA(get(u)))break;}return {u,acc};};
+  const fil=[];
+  for(let i=closed?0:1;i<=(closed?n-1:n-2);i++){
+    const k=idxOf[i];if(k==null)continue;
+    const P0=get(k),bk=get(walk(k,-1,.6).u),fw=get(walk(k,1,.6).u);
+    let ix=P0.x-bk.x,iy=P0.y-bk.y,ox=fw.x-P0.x,oy=fw.y-P0.y;const li=hyp(ix,iy),lo=hyp(ox,oy);if(li<1e-6||lo<1e-6)continue;
+    const th=Math.acos(Math.max(-1,Math.min(1,(ix*ox+iy*oy)/(li*lo))));if(th<.14)continue;
+    const w=Math.max(segLanes(mod(i-1,segs)),segLanes(i%segs))*S.laneW,R=w/2+.5*S.laneW;
+    let d=R*Math.tan(Math.min(th,2.9)/2)*1.1;
+    d=Math.min(d,.45*walk(k,-1,1e9,true).acc,.45*walk(k,1,1e9,true).acc);if(d<.3)continue;
+    fil.push({k,a:walk(k,-1,d).u,b:walk(k,1,d).u});
+  }
+  if(!fil.length)return raw;
+  let st=0;
+  if(closed){fil.forEach(f=>{if(f.k===0){f.a+=M;f.b+=M;f.k+=M;st=f.b-M;}});}
+  const gAt=u=>get(u).g+(closed&&u>=M?segs:0),out=[];
+  const push=(x,y,g)=>out.push({x,y,g,w:segLanes(Math.min(segs-1,Math.floor(closed?mod(g,segs):g)))*S.laneW});
+  const end=closed?st+M:M;let u=st;
+  while(u<end){
+    const f=fil.find(ff=>ff.a===u);const q=get(u);push(q.x,q.y,gAt(u));
+    if(f){const A0=get(f.a),C=get(f.k),B0=get(f.b),ga=gAt(f.a),gb=gAt(f.b);
+      const len=hyp(C.x-A0.x,C.y-A0.y)+hyp(B0.x-C.x,B0.y-C.y),m=Math.max(6,Math.ceil(len/.5));
+      for(let j=1;j<m;j++){const t=j/m,a1=(1-t)*(1-t),a2=2*(1-t)*t,a3=t*t;push(a1*A0.x+a2*C.x+a3*B0.x,a1*A0.y+a2*C.y+a3*B0.y,ga+(gb-ga)*t);}
+      u=f.b;continue;}
+    u++;
+  }
+  if(closed){const f0=out[0];out.push({x:f0.x,y:f0.y,g:f0.g+segs,w:f0.w});}
+  return out;
+}
+function L0c(cl){const a=at(cl.sa),b=at(cl.sb),f=(cl.lo+cl.hi)/2,pa=lat(a,f),pb=lat(b,f);return hyp(pb[0]-pa[0],pb[1]-pa[1]);}
+function drawBadge(c,C,dx,H,z,selected){
+  const F="'Saira Semi Condensed',sans-serif",R=H*.66,sw=H*.85,st=H*.55,pad=H*.45;
+  const name=(z.name||'').toUpperCase();c.font=`800 ${H*.52}px ${F}`;const tw=name?c.measureText(name).width:0;
+  const W=2*R+2+sw+st+(name?tw+2*pad:H*.25);
+  const x0=dx>=0?C[0]:C[0]-W,cy=C[1],cx=x0+R,xE=x0+W,top=cy-H/2;
+  const pill=()=>{c.beginPath();if(c.roundRect)c.roundRect(cx,top,xE-cx,H,H/2);else c.rect(cx,top,xE-cx,H);};
+  // barre blanche
+  pill();c.fillStyle='#f4f4f1';c.fill();
+  c.save();pill();c.clip();
+  let x=cx+R+1;
+  c.fillStyle='#2f9e44';c.fillRect(x,top,sw,H/2);c.fillStyle='#d7262e';c.fillRect(x,cy,sw,H/2);
+  c.fillStyle='#fff';c.font=`800 ${H*.42}px ${F}`;c.textAlign='center';c.textBaseline='middle';
+  c.fillText(z.cmin||'–',x+sw/2,top+H*.27);c.fillText(z.cmax||'–',x+sw/2,cy+H*.25);
+  x+=sw;
+  c.save();c.beginPath();c.rect(x,top,st,H);c.clip();
+  c.fillStyle='#f5c400';c.fillRect(x,top,st,H);c.fillStyle='#1b1b1b';
+  for(let k=-3;k<4;k++){const xx=x+k*H*.28;c.beginPath();c.moveTo(xx,top+H);c.lineTo(xx+H*.14,top+H);c.lineTo(xx+H*.14+H*.5,top);c.lineTo(xx+H*.5,top);c.closePath();c.fill();}
+  c.restore();
+  x+=st;
+  c.fillStyle='#1b1b1b';c.fillRect(x,top,Math.max(1,H*.05),H);
+  c.restore();
+  if(name){c.fillStyle='#1d232b';c.font=`800 ${H*.52}px ${F}`;c.textAlign='left';c.textBaseline='middle';c.fillText(name,x+pad,cy+H*.03);}
+  pill();c.lineWidth=Math.max(1.5,H*.08);c.strokeStyle='#1b1b1b';c.stroke();
+  // pastille jaune : nombre d'arrêts
+  c.beginPath();c.arc(cx,cy,R,0,7);c.fillStyle='#f5c400';c.fill();c.lineWidth=Math.max(1.5,H*.09);c.strokeStyle='#1b1b1b';c.stroke();
+  c.fillStyle='#1b1b1b';c.font=`800 ${H*.85}px ${F}`;c.textAlign='center';c.textBaseline='middle';c.fillText(z.stops,cx,cy+H*.05);
+  if(selected){c.beginPath();if(c.roundRect)c.roundRect(x0-4,cy-R-4,W+8,2*R+8,R+4);else c.rect(x0-4,cy-R-4,W+8,2*R+8);c.lineWidth=3;c.strokeStyle='#31c6f5';c.stroke();}
+  return {x0,x1:x0+W,y0:cy-R,y1:cy+R};
+}
+function lat(p,f){ // point à la fraction f de la largeur (f>0 : côté gauche)
+  if(p._a){const A=lat(p._a,f),B=lat(p._b,f),u=p._u;return [A[0]+(B[0]-A[0])*u,A[1]+(B[1]-A[1])*u];}
+  const q=p.lp;let r;
+  if(!q){const o=f*p.w;r=[p.x+p.nx*o,p.y+p.ny*o];}
+  else{let dx=p.x-q.x,dy=p.y-q.y,l=hyp(dx,dy);if(l<1e-3){dx=-q.sg*p.nx;dy=-q.sg*p.ny;l=1;}
+    const d=(.5-q.sg*f)*p.w;r=[q.x+dx/l*d,q.y+dy/l*d];}
+  const J=p.jn;if(!J)return r;
+  const u=(J.flip?(.5-f):(f+.5))*J.nl,i=Math.max(0,Math.min(J.nl-1,Math.floor(u))),t=u-i,A=J.B[i],B=J.B[i+1];
+  const tx=A[0]+(B[0]-A[0])*t,ty=A[1]+(B[1]-A[1])*t;return [r[0]+(tx-r[0])*J.w,r[1]+(ty-r[1])*J.w];}
+const segLanes=i=>{const v=S.anchors[i]&&S.anchors[i].lanes;return v>=1?v:S.lanes;};
+function gAbs(g){return g>=G.segs?G.total+(g>G.segs?gToS(g-G.segs):0):gToS(g);}
+function buildRuns(){
+  // regroupe les segments consécutifs ayant le même nombre de voies
+  const T=G.total,Lc=Math.max(1,S.cellLen),s0=gToS(S.start),segs=G.segs,P=G.pts;
+  G.cells=[];G.runs=[];G.stairs=[];
+  const runs=[];
+  for(let i=0;i<segs;i++){const nl=segLanes(i),r=runs[runs.length-1];if(r&&r.nl===nl)r.g2=i+1;else runs.push({nl,g1:i,g2:i+1});}
+  if(S.closed&&runs.length>1&&runs[0].nl===runs[runs.length-1].nl){const f=runs.shift();runs[runs.length-1].g2=segs+f.g2;}
+  const whole=S.closed&&runs.length===1;
+  runs.forEach(r=>{
+    const sa=whole?s0:(S.closed?gToS(r.g1):gAbs(r.g1)),sb=whole?s0+T:(S.closed?sa+mod(gToS(r.g2%segs)-sa,T):gAbs(r.g2)),len=sb-sa;if(len<.05)return;
+    const m=Math.max(2,Math.ceil(len/.5)),smp=[];
+    for(let k=0;k<=m;k++){const su=sa+len*k/m,q=at(su);q.su=su;smp.push(q);}
+    const run={nl:r.nl,sa,sb,smp,whole,cells:[]};G.runs.push(run);
+    /* Chaque voie est découpée selon SA propre longueur (la voie intérieure a moins de cases dans un virage),
+       avec des cases de longueur quasi constante. On recale les voies entre elles tous les ~8 cases,
+       de préférence en ligne droite, pour garder un quinconce exact. */
+    const n0=whole?Math.max(3,Math.round(T/Lc)):Math.max(1,Math.round(len/Lc)),L=len/n0;run.L=L;
+    const nI=Math.max(1,Math.round(n0/8)),A=[sa];
+    const curv=k=>{const a=smp[Math.max(0,k-2)],b=smp[Math.min(m,k+2)];return Math.abs(a.tx*b.ty-a.ty*b.tx);};
+    for(let q=1;q<nI;q++){const tgt=sa+len*q/nI,win=3*Lc;let best=-1,bv=1e9;
+      for(let k=0;k<=m;k++){const su=smp[k].su;if(Math.abs(su-tgt)>win||su<A[A.length-1]+3*Lc||su>sb-3*Lc)continue;const v=curv(k)+Math.abs(su-tgt)/win*.02;if(v<bv){bv=v;best=k;}}
+      if(best>=0)A.push(smp[best].su);}
+    A.push(sb);
+    for(let j=0;j<r.nl;j++){
+      const f=(-.5+j/r.nl-.5+(j+1)/r.nl)/2,ls=[0];
+      for(let k=1;k<=m;k++){const p1=lat(smp[k-1],f),p2=lat(smp[k],f);ls.push(ls[k-1]+hyp(p2[0]-p1[0],p2[1]-p1[1]));}
+      const lOf=x=>{const u=Math.max(0,Math.min(m,(x-sa)/len*m)),i=Math.min(m-1,Math.floor(u));return ls[i]+(ls[i+1]-ls[i])*(u-i);};
+      const sOf=l=>{let lo=0,hi=m;if(l<=0)return sa;if(l>=ls[m])return sb;while(hi-lo>1){const mm=(lo+hi)>>1;if(ls[mm]<=l)lo=mm;else hi=mm;}
+        const d=ls[hi]-ls[lo],u=d>0?(l-ls[lo])/d:0;return smp[lo].su+(smp[hi].su-smp[lo].su)*u;};
+      const odd=j%2===1;let Lb=[];
+      for(let k=0;k<A.length-1;k++){const lA=lOf(A[k]),lB=lOf(A[k+1]),cnt=Math.max(1,Math.round((lB-lA)/Lc)),c=(lB-lA)/cnt;
+        for(let i=0;i<cnt;i++)Lb.push(lA+(i+(odd?.5:0))*c);}
+      if(whole){Lb=Lb.map(sOf);Lb.push(Lb[0]+T);}
+      else{
+        if(odd){Lb.shift();Lb.pop();Lb.unshift(0);} // demi-cases des extrémités fusionnées avec leur voisine
+        Lb=Lb.map(sOf);if(Lb[0]>sa)Lb.unshift(sa);Lb.push(sb);
+        Lb=Lb.filter((b,k)=>k===0||b-Lb[k-1]>.05);
+      }
+      let B=Lb;
+      // case intérieure au fond d'une épingle : les cases qui se rejoignent à la pointe n'en font qu'une…
+      const cz=j===r.nl-1?G.collapse.l:j===0?G.collapse.r:[];
+      if(cz.length&&B.length>2){const inC=b=>cz.some(z=>{const d=S.closed?mod(b-z.sa,T):b-z.sa;return d>.01&&d<z.sb-z.sa-.01;});
+        B=B.filter((b,k)=>k===0||k===B.length-1||!inC(b));
+        // …mais si elle devient trop longue, on la recoupe en parts égales
+        const nb=[B[0]];
+        for(let k=1;k<B.length;k++){const la=lOf(B[k-1]),L1=lOf(B[k])-la,q=Math.round(L1/Lc);
+          if(L1>1.5*Lc&&q>=2)for(let i=1;i<q;i++)nb.push(sOf(la+L1*i/q));nb.push(B[k]);}
+        B=nb;}
+      const lane=[];
+      for(let k=0;k<B.length-1;k++){const c={j,nl:r.nl,lo:-.5+j/r.nl,hi:-.5+(j+1)/r.nl,sa:B[k],sb:B[k+1],L,rk:k,g1:r.g1};c.mid=(c.sa+c.sb)/2;c.corner=cellCorner(c);lane.push(c);G.cells.push(c);}
+      run.cells.push(lane);
+    }
+    // limites de virage en escalier, voie par voie
+    G.cz.forEach((z,ci)=>{
+      const ins=[],outs=[];let any=false;
+      run.cells.forEach((C,j)=>{
+        const mC=C.length;
+        for(let k=0;k<mC;k++){
+          if(C[k].corner!==ci)continue;any=true;
+          const pvIn=k>0?C[k-1].corner===ci:(whole?C[mC-1].corner===ci:cornerAt(sa-.05)===ci);
+          const nxIn=k<mC-1?C[k+1].corner===ci:(whole?C[0].corner===ci:cornerAt(sb+.05)===ci);
+          if(!pvIn)ins[j]=C[k].sa;if(!nxIn)outs[j]=C[k].sb;
+        }
+      });
+      if(any)G.stairs.push({nl:r.nl,ins,outs});
+    });
+  });
+}
+/* appartenance d'une case à un virage : la zone s'élargit vers l'extérieur d'une demi-case par voie,
+   à l'entrée comme à la sortie → escalier régulier, plus large à l'extérieur */
+function cellCorner(cl){
+  for(let i=0;i<G.cz.length;i++){const z=G.cz[i],rank=z.turn>0?(cl.nl-1-cl.j):cl.j,sh=rank*cl.L/2;
+    if(S.closed){if(mod(cl.mid-(z.s1-sh),G.total)<=z.len+2*sh)return i;}
+    else if(cl.mid>=z.s1-sh&&cl.mid<=z.s1+z.len+sh)return i;}
+  return -1;
+}
+function runAt(s){for(const r of G.runs){const d=S.closed?mod(s-r.sa,G.total):s-r.sa;if(d>=0&&d<=r.sb-r.sa)return r;}return G.runs[0]||null;}
+function cornerAt(s){
+  for(let i=0;i<G.cz.length;i++){const z=G.cz[i];
+    if(S.closed){if(mod(s-z.s1,G.total)<=z.len)return i;} else if(s>=z.s1&&s<=z.s1+z.len)return i;}
+  return -1;
+}
+function at(s){
+  const P=G.pts,N=P.length,T=G.total;
+  s=S.closed?mod(s,T):Math.max(0,Math.min(T,s));
+  let lo=0,hi=N-1; while(hi-lo>1){const m=(lo+hi)>>1; if(P[m].s<=s)lo=m; else hi=m;}
+  const a=P[lo],b=P[hi],d=b.s-a.s,u=d>0?(s-a.s)/d:0;
+  let tx=a.tx+(b.tx-a.tx)*u,ty=a.ty+(b.ty-a.ty)*u; const l=hyp(tx,ty)||1; tx/=l;ty/=l;
+  const gg=a.g+(b.g-a.g)*u;
+  return {x:a.x+(b.x-a.x)*u,y:a.y+(b.y-a.y)*u,w:a.w+(b.w-a.w)*u,hl:a.hl+(b.hl-a.hl)*u,hr:a.hr+(b.hr-a.hr)*u,_a:a,_b:b,_u:u,g:S.closed?mod(gg,G.segs):gg,s,tx,ty,nx:-ty,ny:tx};
+}
+function gToS(g){
+  const P=G.pts,N=P.length; if(N<2) return 0;
+  if(S.closed){const g0=P[0].g;g=mod(g-g0,G.segs)+g0;}else g=Math.max(0,Math.min(G.segs,g));
+  let lo=0,hi=N-1; while(hi-lo>1){const m=(lo+hi)>>1; if(P[m].g<=g)lo=m; else hi=m;}
+  const a=P[lo],b=P[hi],d=b.g-a.g,u=d>0?(g-a.g)/d:0;
+  return a.s+(b.s-a.s)*u;
+}
+function zonePts(z,step){const out=[];const n=Math.max(2,Math.ceil(z.len/step));for(let i=0;i<=n;i++)out.push(at(z.s1+z.len*i/n));return out;}
+
+/* remappe les paramètres g (départ, virages) quand la structure des points change */
+function remapG(f){
+  S.start=f(S.start); S.corners.forEach(c=>{c.g1=f(c.g1);c.g2=f(c.g2);});
+}
+function clampG(){const n=S.anchors.length,segs=S.closed?n:Math.max(0,n-1);const c=g=>S.closed?mod(g,Math.max(1,segs)):Math.max(0,Math.min(segs,g));remapG(c);}
+
+function splitAt(i,t){
+  const A=S.anchors,n=A.length,a=A[i],b=A[(i+1)%n];
+  const lp=(p,q)=>({x:p.x+(q.x-p.x)*t,y:p.y+(q.y-p.y)*t});
+  const P0={x:a.x,y:a.y},P1={x:a.x+a.ho.x,y:a.y+a.ho.y},P2={x:b.x+b.hi.x,y:b.y+b.hi.y},P3={x:b.x,y:b.y};
+  const P01=lp(P0,P1),P12=lp(P1,P2),P23=lp(P2,P3),P012=lp(P01,P12),P123=lp(P12,P23),M=lp(P012,P123);
+  a.ho={x:P01.x-P0.x,y:P01.y-P0.y}; b.hi={x:P23.x-P3.x,y:P23.y-P3.y};
+  const e=t*t*(3-2*t);
+  A.splice(i+1,0,{x:M.x,y:M.y,hi:{x:P012.x-M.x,y:P012.y-M.y},ho:{x:P123.x-M.x,y:P123.y-M.y},w:a.w,sym:true,lanes:a.lanes||null});
+  remapG(g=>g<i?g:g<i+t?i+(g-i)/t:g<i+1?i+1+(g-i-t)/(1-t):g+1);
+}
+function delAnchor(k){
+  const A=S.anchors,n=A.length; if(k<0||k>=n) return;
+  let f;
+  if(S.closed&&n>3){
+    if(k===0) f=g=>g<1?(n-2)+(1+g)/2:g>=n-1?(n-2)+(g-(n-1))/2:g-1;
+    else f=g=>g<k-1?g:g<k+1?(k-1)+(g-(k-1))/2:g-1;
+  }else{
+    S.closed=false;
+    if(k===0) f=g=>Math.max(0,g-1);
+    else if(k===n-1) f=g=>Math.min(g,n-2);
+    else f=g=>g<k-1?g:g<k+1?(k-1)+(g-(k-1))/2:g-1;
+  }
+  remapG(f); A.splice(k,1); clampG();
+  sel=Math.min(sel,A.length-1); if(sel===k&&A.length===0)sel=-1;
+}
+function setSegLanes(i,nl){
+  const A=S.anchors,n=A.length;if(i<0||i>=G.segs)return;
+  const old=segLanes(i);if(!drag)snapshot();A[i].lanes=nl;const nw=segLanes(i);
+  rebuild();if(nw!==old)toast(`Tronçon ${i+1} : ${nw} case${nw>1?'s':''} de large (${(nw*S.laneW).toFixed(1).replace('.',',')} m)`);
+}
+function toggleSmooth(i){
+  const A=S.anchors,n=A.length,a=A[i];
+  if(hyp(a.hi.x,a.hi.y)+hyp(a.ho.x,a.ho.y)>0.01){a.hi={x:0,y:0};a.ho={x:0,y:0};return;}
+  const pv=(i>0||S.closed)?A[mod(i-1,n)]:null,nx=(i<n-1||S.closed)?A[(i+1)%n]:null;
+  let dx=(nx||a).x-(pv||a).x,dy=(nx||a).y-(pv||a).y;const l=hyp(dx,dy)||1;dx/=l;dy/=l;
+  const ln=nx?hyp(nx.x-a.x,nx.y-a.y)/3:0,lp=pv?hyp(a.x-pv.x,a.y-pv.y)/3:0;
+  a.ho={x:dx*(ln||lp),y:dy*(ln||lp)}; a.hi={x:-dx*(lp||ln),y:-dy*(lp||ln)}; a.sym=true;
+}
+function reverseActive(){
+  const A=S.anchors,n=A.length; if(n<2) return;
+  const segsN=S.closed?n:n-1,old=A.map(a=>a.lanes||null);
+  A.reverse(); A.forEach(a=>{const t=a.hi;a.hi=a.ho;a.ho=t;a.lanes=null;});
+  for(let j=0;j<segsN;j++)A[n-1-((j+1)%n)].lanes=old[j];
+  const closed=S.closed; remapG(g=>closed?mod(n-1-g,n):n-1-g);
+  S.corners.forEach(c=>{const t=c.g1;c.g1=c.g2;c.g2=t;});
+}
+function reverseDir(){
+  const n=S.anchors.length; if(n<2) return;
+  snapshot(); reverseActive(); if(sel>=0)sel=n-1-sel; rebuild(); toast('Sens de course inversé');
+}
+
+/* ---------- rendu ---------- */
+let raf=0;
+function draw(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;drawNow();});}
+function drawNow(){
+  const d=devicePixelRatio||1; ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height); ctx.setTransform(d,0,0,d,0,0);
+  flagBoxes=[];
+  const v=view(); if(!v) return;
+  renderAll(ctx,v.T,v.k,{cells:opt.cells,numbers:opt.numbers,flag:26,map:true});
+  renderEdit(ctx,v);
+}
+/* toutes les routes : vibreurs, bords, bitume de toutes, puis cases (découpées par les routes précédentes) → les routes fusionnent */
+function roadPoly(c,T){
+  const P=G.pts,N=P.length;if(N<2)return;
+  const side=(p,f)=>{const m=lat(p,f);return T(m[0],m[1]);};
+  for(let i=0;i<N;i++){const X=side(P[i],.5);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);}
+  for(let i=N-1;i>=0;i--){const X=side(P[i],-.5);c.lineTo(X[0],X[1]);}
+  c.closePath();
+}
+function roadPolyWhere(c,T,pred){ // contour(s) des parties de route qui vérifient pred(s)
+  const side=(p,f)=>{const m=lat(p,f);return T(m[0],m[1]);};
+  let run=[];
+  const flush=()=>{if(run.length>=2){run.forEach((p,i)=>{const X=side(p,.5);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});
+    for(let i=run.length-1;i>=0;i--){const X=side(run[i],-.5);c.lineTo(X[0],X[1]);}c.closePath();}run=[];};
+  G.pts.forEach(p=>{if(pred(p.s))run.push(p);else flush();});flush();
+}
+function renderAll(c,T,k,o){
+  const n=S.paths.length;
+  ['kerb','edge','fill'].forEach(ph=>{for(let p=0;p<n;p++)withPath(p,()=>renderTrack(c,T,k,o,ph,p));});
+  for(let p=0;p<n;p++)withPath(p,()=>{
+    c.save();
+    if(attachInfo[p]&&attachInfo[p].length){c.beginPath();c.rect(-1e7,-1e7,2e7,2e7);attachInfo[p].forEach(a=>polyNear(c,T,a.q,a.sJ,a.R));c.clip('evenodd');}
+    const tails=selfTails[p]||[],seam=o.cells&&S.cellLen*k>=3,sw=Math.max(.7,.14*k);
+    if(!tails.length){renderTrack(c,T,k,o,'detail',p);c.restore();
+      if(seam&&attachInfo[p]&&attachInfo[p].length){c.save();c.beginPath();roadPoly(c,T);c.clip();c.beginPath();attachInfo[p].forEach(a=>polyNear(c,T,a.q,a.sJ,a.R));c.strokeStyle='#7d828a';c.lineWidth=sw;c.stroke();c.restore();}
+      return;}
+    const inTail=x=>tails.some(t=>x>=t.sa&&x<=t.sb);
+    renderTrack(c,T,k,Object.assign({},o,{sf:x=>!inTail(x)}),'detail',p);
+    c.beginPath();c.rect(-1e7,-1e7,2e7,2e7);roadPolyWhere(c,T,x=>!inTail(x));c.clip('evenodd');
+    renderTrack(c,T,k,Object.assign({},o,{sf:inTail,tailPass:true}),'detail',p);
+    c.restore();
+    if(seam){c.save();c.beginPath();roadPolyWhere(c,T,inTail);c.clip();c.beginPath();roadPolyWhere(c,T,x=>!inTail(x));
+      if(attachInfo[p])attachInfo[p].forEach(a=>polyNear(c,T,a.q,a.sJ,a.R));c.strokeStyle='#7d828a';c.lineWidth=sw;c.stroke();c.restore();}
+  });
+  renderBridges(c,T,k,o);
+  for(let p=0;p<n;p++)withPath(p,()=>renderTrack(c,T,k,o,'top',p));
+}
+function renderTrack(c,T,k,o,phase,pi){
+  const P=G.pts,N=P.length; if(N<2) return;
+  const side=(p,f)=>{const m=lat(p,f);return T(m[0],m[1]);};
+  const poly=(arr,f)=>{c.beginPath();arr.forEach((p,i)=>{const X=side(p,f);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});};
+  c.lineJoin='round'; c.lineCap='butt';
+  const along=(sa,sb,f,step)=>{
+    const Tt=G.total;let d=sb-sa;if(S.closed){d=mod(d,Tt);if(d>Tt/2){d=d-Tt;}}
+    const n=Math.max(1,Math.ceil(Math.abs(d)/step)),out=[];for(let i=0;i<=n;i++)out.push(side(at(sa+d*i/n),f));return out;};
+  const across=(s,lo,hi)=>{const p=at(s),a=side(p,lo),b=side(p,hi);c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);};
+  if(phase==='kerb'){
+  // vibreurs
+  const kw=Math.max(2,1.1*k);
+  G.cz.forEach((z,ci)=>{
+    [1,-1].forEach(sg=>{
+      const pts=zonePts(z.kerb&&z.kerb[sg>0?'l':'r']||z,Math.max(.4,2/k));
+      c.beginPath();let pen=false;
+      pts.forEach(p=>{const q=p.lp||(p._a&&p._a.lp)||(p._b&&p._b.lp);if(q&&q.sg===sg){pen=false;return;} // pas de vibreur sur le côté qui s'enroule autour de la pointe
+const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);pen=true;});
+      c.lineWidth=kw;c.setLineDash([]);c.strokeStyle='#fff';c.stroke();
+      if(k>=1)c.setLineDash([1.6*k,1.6*k]);c.strokeStyle='#d7262e';c.stroke();c.setLineDash([]);
+    });
+  });
+    return;
+  }
+  if(phase==='edge'){c.beginPath();roadPoly(c,T);c.lineWidth=2*Math.max(1,.3*k);c.strokeStyle='#fff';c.stroke();return;}
+  if(phase==='fill'){c.beginPath();roadPoly(c,T);c.fillStyle='#c9ccd0';c.fill();return;}
+  if(phase==='detail'){
+  const sf=o.sf,okS=x=>!sf||sf(S.closed?mod(x,G.total):x);
+  const polyF=(arr,f)=>{c.beginPath();let pen=false;arr.forEach(p=>{if(!okS(p.su!=null?p.su:p.s)){pen=false;return;}const X=side(p,f);pen?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);pen=true;});};
+  const showCells=o.cells&&S.cellLen*k>=3;
+  // léger voile sur les cases de virage
+  if(showCells){
+    c.fillStyle='rgba(215,38,46,.16)';
+    G.cells.forEach(cl=>{
+      if(o.bridge||cl.corner<0||cl.sliver||!okS(cl.mid)) return; const ln=cl;
+      const ss=[0,1/3,2/3,1].map(u=>at(cl.sa+(cl.sb-cl.sa)*u));
+      c.beginPath(); ss.forEach((p,i)=>{const X=side(p,ln.hi);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});
+      for(let i=3;i>=0;i--){const X=side(ss[i],ln.lo);c.lineTo(X[0],X[1]);}
+      c.closePath(); c.fill();
+    });
+  }
+  // voies + cases en quinconce
+  if(showCells){
+    c.strokeStyle=o.bridge?'#8e949b':'#7d828a'; c.lineWidth=Math.max(.7,.14*k);
+    G.runs.forEach(r=>{for(let j=1;j<r.nl;j++){polyF(r.smp,-.5+j/r.nl);c.stroke();}});
+    c.beginPath();
+    G.cells.forEach(cl=>{if(cl.sliver||!okS(cl.mid))return;if(!cl.hideSa)across(cl.sa,cl.lo,cl.hi);if(!cl.hideSb)across(cl.sb,cl.lo,cl.hi);});
+    c.stroke();
+    // flèches des cases de virage (elles suivent la courbe de la voie)
+    if(S.cellLen*k>=10){
+      const ac=o.bridge?'#d4d8dd':'#3b3f45';c.strokeStyle=ac;c.fillStyle=ac;c.lineWidth=Math.max(1.2,.1*S.laneW*k);c.lineCap='round';c.lineJoin='round';
+      const head=(A,B,sz)=>{const dx=B[0]-A[0],dy=B[1]-A[1],l=hyp(dx,dy)||1,ux=dx/l,uy=dy/l;
+        c.beginPath();c.moveTo(B[0]+ux*sz*.35,B[1]+uy*sz*.35);c.lineTo(B[0]-ux*sz*.65-uy*sz*.55,B[1]-uy*sz*.65+ux*sz*.55);c.lineTo(B[0]-ux*sz*.65+uy*sz*.55,B[1]-uy*sz*.65-ux*sz*.55);c.closePath();c.fill();};
+      G.cells.forEach(cl=>{
+        if(cl.sliver||cl.arrow===3||cl.arrow==null||!okS(cl.mid))return;
+        const qm=at(cl.mid),la=lat(qm,cl.lo),lb=lat(qm,cl.hi),lw=hyp(lb[0]-la[0],lb[1]-la[1]);if(lw<.5*S.laneW||L0c(cl)<.5*S.cellLen)return;
+        const L=cl.sb-cl.sa,fm=(cl.lo+cl.hi)/2,hw=(cl.hi-cl.lo),sz=Math.min(L,lw)*.32*k;
+        const pt=(u,f)=>{const q=at(cl.sa+L*u);return side(q,f);};
+        const n=8,sh=[];for(let i=0;i<=n;i++)sh.push(pt(.2+.58*i/n,fm));
+        c.beginPath();sh.forEach((X,i)=>i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]));c.stroke();head(sh[n-1],sh[n],sz);
+        if(cl.arrow===1||cl.arrow===2){
+          const sg=cl.arrow===1?1:-1,cv2=[];for(let i=0;i<=n;i++){const t=i/n,u=.35+.45*t,f=fm+sg*hw*.42*t*t;cv2.push(pt(u,f));}
+          c.beginPath();cv2.forEach((X,i)=>i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]));c.stroke();head(cv2[n-1],cv2[n],sz);
+        }
+      });
+      c.lineCap='butt';
+    }
+    // limites de virage en escalier (rouge)
+    c.strokeStyle='#d7262e'; c.lineWidth=Math.max(1.6,.32*k); c.lineCap='round';
+    if(!o.tailPass)G.stairs.forEach(st=>{
+      c.beginPath();const L=st.nl,st2=Math.max(.3,2/k);
+      for(let j=0;j<L;j++){const lo=-.5+j/L,hi=-.5+(j+1)/L;if(st.ins[j]!=null)across(st.ins[j],lo,hi);if(st.outs[j]!=null)across(st.outs[j],lo,hi);}
+      for(let j=0;j<L-1;j++){const f=-.5+(j+1)/L;
+        [[st.ins[j],st.ins[j+1]],[st.outs[j],st.outs[j+1]]].forEach(([x,y])=>{if(x==null||y==null)return;const pl=along(x,y,f,st2);pl.forEach((X,i)=>i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]));});}
+      c.stroke();
+    });
+    c.lineCap='butt';
+    if(o.numbers&&S.cellLen*k>=9){
+      const fs=Math.max(10,Math.min(16,S.cellLen*k*.35)),ln={cells:G.cells.filter(x=>x.j===0)};ln.cells.forEach((x,i)=>x.num=i+1);
+      c.font=`600 ${fs}px 'Saira Semi Condensed',sans-serif`; c.textAlign='center'; c.textBaseline='middle';
+      c.lineWidth=3; c.strokeStyle='rgba(0,0,0,.75)'; c.fillStyle='#fff';
+      ln.cells.forEach(cl=>{const p=at(cl.mid),off=p.w/2+1.2+fs/k*.6,X=T(p.x-p.nx*off,p.y-p.ny*off);c.strokeText(cl.num,X[0],X[1]);c.fillText(cl.num,X[0],X[1]);});
+    }
+  }
+    return;
+  }
+  // phase 'top' : départ + drapeaux
+  if(pi===S.startPath){
+  // ligne de départ (damier) + flèche de sens
+  {
+    const p=at(gToS(S.start)),rs=runAt(p.s),cols=Math.max(2,(rs?rs.nl:S.lanes)*2),sq=p.w/cols;
+    const q=(f,l)=>{const m=lat(p,f);return T(m[0]+p.tx*l,m[1]+p.ty*l);};
+    for(let r=0;r<2;r++)for(let col=0;col<cols;col++){
+      const fa=.5-col/cols,fb=.5-(col+1)/cols,la=-r*sq,lb=-(r+1)*sq;
+      const a=q(fa,la),b=q(fb,la),cc=q(fb,lb),d=q(fa,lb);
+      c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.lineTo(cc[0],cc[1]);c.lineTo(d[0],d[1]);c.closePath();
+      c.fillStyle=(r+col)%2?'#16181b':'#fff';c.fill();
+    }
+    const B=T(p.x+p.nx*(p.w/2+3),p.y+p.ny*(p.w/2+3)),dx=p.tx,dy=-p.ty,sz=Math.max(8,1.8*k);
+    c.beginPath();c.moveTo(B[0]+dx*sz,B[1]+dy*sz);c.lineTo(B[0]-dx*sz*.6-dy*sz*.7,B[1]-dy*sz*.6+dx*sz*.7);c.lineTo(B[0]-dx*sz*.6+dy*sz*.7,B[1]-dy*sz*.6-dx*sz*.7);c.closePath();
+    c.fillStyle='#f5c400';c.fill();c.lineWidth=1.5;c.strokeStyle='#1b1b1b';c.stroke();
+  }
+  }
+  // pastilles de virage : arrêts (jaune) · trajectoire courte (vert) / longue (rouge) · nom
+  G.cz.forEach((z,ci)=>{
+    const pm=at(z.s1+z.len/2),p1=at(z.s1),p2=at(z.s1+z.len);
+    let turn=p1.tx*p2.ty-p1.ty*p2.tx;
+    if(Math.abs(turn)<.02){const a=at(z.s1+z.len*.35),b=at(z.s1+z.len*.65);turn=a.tx*b.ty-a.ty*b.tx;}
+    const so=turn>0?-1:1,E=lat(pm,.5*so),M=lat(pm,0);let ux=E[0]-M[0],uy=E[1]-M[1];const ul=hyp(ux,uy)||1;ux/=ul;uy/=ul;
+    const A=T(E[0]+ux*1.8,E[1]+uy*1.8),dx=ux,dy=-uy,H=o.flag,len=H*1.4,C=[A[0]+dx*len,A[1]+dy*len];
+    c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(C[0],C[1]);c.lineWidth=Math.max(2,H*.1);c.strokeStyle='#1b1b1b';c.lineCap='round';c.stroke();c.lineCap='butt';
+    const bb=drawBadge(c,C,dx,H,z,o.map&&ci===selCorner&&pi===S.active);
+    if(o.map)flagBoxes.push({p:pi,ci,...bb});
+  });
+}
+function visibleHandles(){
+  const n=S.anchors.length,set=new Set();
+  if(opt.handles){for(let i=0;i<n;i++)set.add(i);return set;}
+  if(sel>=0){set.add(sel);if(sel>0||S.closed)set.add(mod(sel-1,n));if(sel<n-1||S.closed)set.add((sel+1)%n);}
+  return set;
+}
+function renderEdit(c,v){
+  const A=S.anchors,T=v.T;
+  bridgeBoxes=[];
+  crossings.forEach((cr,i)=>{const X=T(cr.x,cr.y),w=26,h=20;
+    c.beginPath();if(c.roundRect)c.roundRect(X[0]-w/2,X[1]-h/2,w,h,9);else c.rect(X[0]-w/2,X[1]-h/2,w,h);
+    c.fillStyle='rgba(29,35,43,.92)';c.fill();c.lineWidth=1.5;c.strokeStyle='#f5c400';c.stroke();
+    c.fillStyle='#f5c400';c.font="700 14px 'Saira Semi Condensed',sans-serif";c.textAlign='center';c.textBaseline='middle';c.fillText('⇅',X[0],X[1]+.5);
+    bridgeBoxes.push({i,x:X[0],y:X[1],w,h});});
+  // autres routes : axe discret + points (bouts libres en jaune = on peut s'y raccorder)
+  for(let p=0;p<S.paths.length;p++){if(p===S.active)continue;withPath(p,()=>{
+    if(G.pts.length>1){c.beginPath();G.pts.forEach((q,i)=>{const X=T(q.x,q.y);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});c.lineWidth=1;c.strokeStyle='rgba(49,198,245,.35)';c.stroke();}
+    const B=S.anchors,m=B.length;B.forEach((a,i)=>{const P=T(a.x,a.y),end=!S.closed&&(i===0||i===m-1);
+      c.fillStyle=end?'#f5c400':'rgba(255,255,255,.55)';c.fillRect(P[0]-3.5,P[1]-3.5,7,7);c.lineWidth=1;c.strokeStyle='#0b4f66';c.strokeRect(P[0]-3.5,P[1]-3.5,7,7);});
+  });}
+  // axe
+  if(G.pts.length>1){c.beginPath();G.pts.forEach((p,i)=>{const X=T(p.x,p.y);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});c.lineWidth=1.3;c.strokeStyle='rgba(49,198,245,.9)';c.stroke();}
+  // fantôme de la plume
+  if(redraw&&redraw.i<A.length){
+    c.beginPath();redraw.ghost.forEach((g,i)=>{const X=T(g[0],g[1]);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);});
+    c.setLineDash([8,6]);c.lineWidth=Math.max(3,(redraw.ghost[0][2]||10)*v.k*.5);c.strokeStyle='rgba(245,196,0,.35)';c.lineCap='round';c.stroke();
+    c.lineWidth=1.5;c.strokeStyle='rgba(245,196,0,.95)';c.stroke();c.setLineDash([]);c.lineCap='butt';
+    const B=A[(redraw.i+1)%A.length],PB=T(B.x,B.y);c.beginPath();c.arc(PB[0],PB[1],11,0,7);c.lineWidth=2.5;c.strokeStyle='#f5c400';c.stroke();
+    if(tool==='pen'&&mouse&&!drag&&!spacePan){c.beginPath();c.moveTo(mouse[0],mouse[1]);c.lineTo(PB[0],PB[1]);c.setLineDash([3,5]);c.lineWidth=1.2;c.strokeStyle='rgba(245,196,0,.9)';c.stroke();c.setLineDash([]);}
+  }
+  if(tool==='cut'&&cutPending!==null&&G.pts.length>1){
+    const s1=gToS(cutPending),p0=at(s1),X0=T(p0.x,p0.y);
+    const np=mouse?nearestPath(mouse[0],mouse[1]):null;
+    if(onTrack(np)){
+      let a=s1,Ls=S.closed?mod(np.s-s1,G.total):np.s-s1;if(!S.closed&&Ls<0){a=np.s;Ls=-Ls;}
+      const m=Math.max(2,Math.ceil(Ls/1.5));c.beginPath();for(let i=0;i<=m;i++){const p=at(a+Ls*i/m),X=T(p.x,p.y);i?c.lineTo(X[0],X[1]):c.moveTo(X[0],X[1]);}
+      c.lineWidth=Math.max(4,p0.w*v.k*.9);c.lineCap='round';c.strokeStyle='rgba(215,38,46,.45)';c.stroke();c.lineCap='butt';
+    }
+    c.beginPath();c.arc(X0[0],X0[1],7,0,7);c.fillStyle='#d7262e';c.fill();c.lineWidth=2;c.strokeStyle='#fff';c.stroke();
+  }
+  if(tool==='pen'&&mouse&&!drag&&!spacePan&&(redraw?redraw.i<A.length:(A.length&&!S.closed&&penCont))){
+    const a=redraw?A[redraw.i]:A[A.length-1],P0=T(a.x,a.y),P1=T(a.x+a.ho.x,a.y+a.ho.y);
+    c.beginPath();c.moveTo(P0[0],P0[1]);c.bezierCurveTo(P1[0],P1[1],mouse[0],mouse[1],mouse[0],mouse[1]);
+    c.setLineDash([5,4]);c.lineWidth=1.3;c.strokeStyle='rgba(49,198,245,.9)';c.stroke();c.setLineDash([]);
+    if(!redraw&&A.length>=3){const F=T(A[0].x,A[0].y);if(hyp(F[0]-mouse[0],F[1]-mouse[1])<10){c.beginPath();c.arc(F[0],F[1],10,0,7);c.strokeStyle='#f5c400';c.lineWidth=2;c.stroke();}}
+  }
+  if(tool==='pen'&&mouse&&!drag&&!spacePan&&!redraw&&hitAnchor(mouse[0],mouse[1])<0&&!anchorOther(mouse[0],mouse[1])&&!bridgeBoxes.some(b=>Math.abs(b.x-mouse[0])<b.w/2+3&&Math.abs(b.y-mouse[1])<b.h/2+3)){
+    const tg=snapTarget(mouse[0],mouse[1],A.length&&!S.closed&&penCont);
+    if(tg){const X=T(tg.np.p.x,tg.np.p.y);c.beginPath();c.arc(X[0],X[1],7,0,7);c.lineWidth=2.5;c.strokeStyle='#f5c400';c.stroke();c.beginPath();c.arc(X[0],X[1],2.5,0,7);c.fillStyle='#f5c400';c.fill();}
+  }
+  if(selSeg>=0&&selSeg<G.segs&&G.pts.length>1){
+    c.beginPath();let first=true;G.pts.forEach(p=>{const gg=S.closed&&p.g>=G.segs?p.g-G.segs:p.g;if(gg<selSeg-1e-9||gg>selSeg+1+1e-9){first=true;return;}const X=T(p.x,p.y);first?c.moveTo(X[0],X[1]):c.lineTo(X[0],X[1]);first=false;});
+    c.lineWidth=5;c.lineCap='round';c.strokeStyle='rgba(49,198,245,.85)';c.stroke();c.lineCap='butt';
+  }
+  // poignées
+  const vh=visibleHandles();
+  vh.forEach(i=>{const a=A[i],P=T(a.x,a.y);
+    ['hi','ho'].forEach(sd=>{const h=a[sd];if(hyp(h.x,h.y)<1e-3)return;const H=T(a.x+h.x,a.y+h.y);
+      c.beginPath();c.moveTo(P[0],P[1]);c.lineTo(H[0],H[1]);c.lineWidth=1;c.strokeStyle='#31c6f5';c.stroke();
+      c.beginPath();c.arc(H[0],H[1],4,0,7);c.fillStyle='#31c6f5';c.fill();});
+  });
+  // losanges de largeur (tronçon sélectionné) : tirer = ajouter / retirer des cases
+  if(selSeg>=0&&selSeg<G.segs&&G.pts.length>1&&tool!=='pan'){
+    const p=at(gToS(selSeg+.5));[1,-1].forEach(sg=>{const X=T(p.x+p.nx*p.w/2*sg,p.y+p.ny*p.w/2*sg);
+      c.beginPath();c.moveTo(X[0],X[1]-6);c.lineTo(X[0]+6,X[1]);c.lineTo(X[0],X[1]+6);c.lineTo(X[0]-6,X[1]);c.closePath();
+      c.fillStyle='#f5c400';c.fill();c.lineWidth=1.2;c.strokeStyle='#1b1b1b';c.stroke();});
+  }
+  // points d'ancrage
+  A.forEach((a,i)=>{const P=T(a.x,a.y),s=i===sel?9:7;
+    c.fillStyle=i===sel?'#31c6f5':'#fff';c.fillRect(P[0]-s/2,P[1]-s/2,s,s);c.lineWidth=1.3;c.strokeStyle='#0b4f66';c.strokeRect(P[0]-s/2,P[1]-s/2,s,s);});
+  // début de virage en attente
+  if(pendingCorner!==null&&G.pts.length>1){const p=at(gToS(pendingCorner)),X=T(p.x,p.y);c.beginPath();c.arc(X[0],X[1],7,0,7);c.fillStyle='#d7262e';c.fill();c.lineWidth=2;c.strokeStyle='#fff';c.stroke();}
+  // survol du tracé
+  if((tool==='corner'||tool==='start'||tool==='cut')&&mouse&&!spacePan){const np=nearestPath(mouse[0],mouse[1]);if(onTrack(np)){const X=T(np.p.x,np.p.y);c.beginPath();c.arc(X[0],X[1],5,0,7);c.fillStyle='#f5c400';c.fill();}}
+}
+
+/* ---------- hit tests ---------- */
+function hitAnchor(X,Y){const v=view();if(!v)return -1;for(let i=S.anchors.length-1;i>=0;i--){const a=S.anchors[i],P=v.T(a.x,a.y);if(hyp(P[0]-X,P[1]-Y)<8)return i;}return -1;}
+function hitHandle(X,Y){const v=view();if(!v)return null;let r=null;visibleHandles().forEach(i=>{const a=S.anchors[i];['hi','ho'].forEach(sd=>{const h=a[sd];if(hyp(h.x,h.y)<1e-3)return;const H=v.T(a.x+h.x,a.y+h.y);if(hyp(H[0]-X,H[1]-Y)<7)r={i,sd};});});return r;}
+function hitGrip(X,Y){if(selSeg<0||selSeg>=G.segs||G.pts.length<2)return 0;const v=view(),p=at(gToS(selSeg+.5));for(const sg of [1,-1]){const P=v.T(p.x+p.nx*p.w/2*sg,p.y+p.ny*p.w/2*sg);if(hyp(P[0]-X,P[1]-Y)<8)return sg;}return 0;}
+function hitFlag(X,Y){for(const f of flagBoxes)if(f.p===S.active&&X>=f.x0&&X<=f.x1&&Y>=f.y0&&Y<=f.y1)return f.ci;return -1;}
+function onTrack(np){const v=view();return !!(np&&v&&np.d<np.p.w*v.k/2+8);}
+function nearestPath(X,Y){
+  const v=view(),P=G.pts;if(!v||P.length<2)return null;
+  let best=null,prev=v.T(P[0].x,P[0].y);
+  for(let i=1;i<P.length;i++){
+    const cur=v.T(P[i].x,P[i].y),dx=cur[0]-prev[0],dy=cur[1]-prev[1],l2=dx*dx+dy*dy;
+    let u=l2>0?((X-prev[0])*dx+(Y-prev[1])*dy)/l2:0;u=Math.max(0,Math.min(1,u));
+    const d=hyp(prev[0]+dx*u-X,prev[1]+dy*u-Y);
+    if(!best||d<best.d)best={d,i,u};
+    prev=cur;
+  }
+  const a=P[best.i-1],b=P[best.i],s=a.s+(b.s-a.s)*best.u;
+  const gg=a.g+(b.g-a.g)*best.u;
+  return {d:best.d,s,g:S.closed?mod(gg,G.segs):gg,p:at(s)};
+}
+
+/* ---------- interactions ---------- */
+function pt(e){const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top];}
+cv.addEventListener('contextmenu',e=>{
+  e.preventDefault(); const [X,Y]=pt(e);{const q=pathAt(X,Y);if(q>=0&&q!==S.active)setActive(q);}
+  const f=hitFlag(X,Y); if(f>=0){snapshot();S.corners.splice(f,1);selCorner=-1;rebuild();return;}
+  const i=hitAnchor(X,Y); if(i>=0){snapshot();delAnchor(i);rebuild();}
+});
+cv.addEventListener('dblclick',e=>{
+  if(tool!=='edit'&&tool!=='pen')return; const [X,Y]=pt(e),i=hitAnchor(X,Y);
+  if(i>=0){snapshot();toggleSmooth(i);sel=i;rebuild();}
+});
+let midPan=null;
+cv.addEventListener('mousedown',e=>{if(e.button===1)e.preventDefault();});
+cv.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault();});
+cv.addEventListener('pointerdown',e=>{
+  if(e.button===1){e.preventDefault();midPan={x:e.clientX,y:e.clientY};cv.setPointerCapture(e.pointerId);cv.style.cursor='grabbing';return;}
+  if(e.button!==0||spacePan) return;
+  const [X,Y]=pt(e); mouse=[X,Y];
+  {const bb=bridgeBoxes.find(b=>Math.abs(b.x-X)<b.w/2+3&&Math.abs(b.y-Y)<b.h/2+3);
+   if(bb&&!drag&&!redraw){const cr=crossings[bb.i];snapshot();S.bridges=S.bridges||{};cr.top=cr.top?0:1;S.bridges[cr.key]=cr.top;rebuild();
+     const up=cr.top?cr.b:cr.a;toast(cr.a.p===cr.b.p?'Croisement : l’autre passage est maintenant au-dessus':`Croisement : la route n° ${up.p+1} passe au-dessus`);return;}}
+  if(tool!=='pen'&&cutPending===null&&pendingCorner===null){const q=pathAt(X,Y);if(q>=0&&q!==S.active){setActive(q);}}
+  const keepSeg=selSeg; selSeg=-1;
+  if(tool==='pen') penDown(X,Y,e);
+  else if(tool==='edit') {selSeg=keepSeg;editDown(X,Y,e);}
+  else if(tool==='corner') cornerDown(X,Y);
+  else if(tool==='start') startDown(X,Y);
+  else if(tool==='cut') cutDown(X,Y);
+  else if(tool==='arrow') arrowDown(X,Y);
+  if(drag){cv.setPointerCapture(e.pointerId);drag.moved=false;drag.X=X;drag.Y=Y;}
+  updPanel(); draw();
+});
+function rotate(r){const A=S.anchors,n=A.length;if(!r)return;S.anchors=A.slice(r).concat(A.slice(0,r));remapG(g=>mod(g-r,n));}
+function cutSection(ga,gb){
+  const T=G.total;let s1=gToS(ga),s2=gToS(gb);
+  if(!S.closed&&s2<s1){[ga,gb]=[gb,ga];[s1,s2]=[s2,s1];}
+  const Ls=S.closed?mod(s2-s1,T):s2-s1;
+  if(Ls<2){toast('Tronçon trop court');return;}
+  if(S.closed&&Ls>T*.9){toast('Tronçon trop long : garde au moins une partie du circuit');return;}
+  snapshot();const backup=undoS[undoS.length-1];
+  const ghost=[],m=Math.max(2,Math.ceil(Ls/1.5));
+  for(let i=0;i<=m;i++){const p=at(s1+Ls*i/m);ghost.push([p.x,p.y,p.w]);}
+  // virages qui touchent le tronçon : supprimés
+  const drop=new Set();
+  G.cz.forEach((z,ci)=>{const ov=S.closed?(mod(z.s1-s1,T)<=Ls||mod(s1-z.s1,T)<=z.len):(z.s1<=s2&&z.s1+z.len>=s1);if(ov)drop.add(ci);});
+  S.corners=S.corners.filter((c,i)=>!drop.has(i));
+  const tmp={g1:ga,g2:gb,stops:0};S.corners.push(tmp);
+  if(S.closed)rotate(Math.floor(tmp.g1));
+  const ensure=g=>{const n=S.anchors.length,i=Math.floor(g),t=g-i;if(!S.closed&&i>=n-1)return n-1;if(t<.03)return i;if(t>.97)return i+1;splitAt(i,t);return i+1;};
+  let iB=ensure(tmp.g2);const nb=S.anchors.length;const iA=ensure(tmp.g1);
+  if(S.anchors.length>nb&&iA<=iB)iB++;
+  S.corners.pop();
+  const n=S.anchors.length,Bp=(S.closed&&iB>=n)?n:iB;
+  if(Bp<=iA){restore(backup);undoS.pop();toast('Tronçon trop court');return;}
+  const cnt=Bp-iA-1;
+  if(cnt>0){S.anchors.splice(iA+1,cnt);remapG(g=>g<=iA?g:g<Bp?iA+(g-iA)/(Bp-iA):g-cnt);}
+  const A=S.anchors,a=A[iA],b=A[(iA+1)%A.length];
+  a.ho={x:0,y:0};b.hi={x:0,y:0};a.sym=false;b.sym=false;
+  clampG();
+  redraw={i:iA,ghost,backup};sel=iA;selCorner=-1;cutPending=null;
+  setTool('pen');rebuild();
+  toast(drop.size?'Tronçon retiré (virage supprimé) : redessine-le à la plume':'Tronçon retiré : redessine-le à la plume');
+}
+function finishRedraw(){if(!redraw)return;redraw=null;updHint();rebuild();toast('Tronçon redessiné');}
+function cancelRedraw(){if(!redraw)return;const b=redraw.backup;undoS.push(JSON.stringify(S));restore(b);toast('Découpe annulée');}
+function cutDown(X,Y){
+  const np=nearestPath(X,Y);if(!onTrack(np)){cutPending=null;return;}
+  if(cutPending===null){cutPending=np.g;sel=-1;selCorner=-1;return;}
+  const g1=cutPending;cutPending=null;cutSection(g1,np.g);
+}
+function joinPaths(a,b,bAtStart){ // la route a (continuée par sa fin) absorbe la route b
+  if(!bAtStart)withPath(b,reverseActive);
+  const A=S.paths[a],B=S.paths[b],nA=A.anchors.length;
+  B.corners.forEach(c=>{c.g1+=nA;c.g2+=nA;});
+  A.anchors.push(...B.anchors);A.corners.push(...B.corners);
+  if(S.startPath===b){S.startPath=a;A.start=B.start+nA;}
+  S.paths.splice(b,1);if(S.startPath>b)S.startPath--;
+  S.active=a>b?a-1:a;
+}
+function snapTarget(X,Y,cont){ // route la plus proche sous le curseur (pour brancher / fusionner)
+  const act=S.active;let best=null;
+  for(let p=0;p<S.paths.length;p++)withPath(p,()=>{
+    if(G.pts.length<2)return;const np=nearestPath(X,Y);if(!onTrack(np))return;
+    if(p===act&&cont&&(G.segs<2||np.g>G.segs-1))return; // pas sur le dernier bout qu'on est en train de tracer
+    if(!best||np.d<best.np.d)best={p,np};
+  });
+  return best;
+}
+function anchorOther(X,Y){const v=view();if(!v)return null;
+  for(let p=0;p<S.paths.length;p++){if(p===S.active)continue;const A=S.paths[p].anchors;for(let i=A.length-1;i>=0;i--){const P=v.T(A[i].x,A[i].y);if(hyp(P[0]-X,P[1]-Y)<9)return {p,i,end:!S.paths[p].closed&&(i===0||i===A.length-1)};}}
+  return null;}
+function pathAt(X,Y){ // quelle route est sous le curseur (la route active en priorité)
+  const v=view();if(!v)return -1;
+  const test=p=>withPath(p,()=>{if(hitAnchor(X,Y)>=0)return true;if(flagBoxes.some(f=>f.p===p&&X>=f.x0&&X<=f.x1&&Y>=f.y0&&Y<=f.y1))return true;return G.pts.length>1&&onTrack(nearestPath(X,Y));});
+  if(test(S.active))return S.active;
+  for(let p=0;p<S.paths.length;p++)if(p!==S.active&&test(p))return p;
+  return -1;}
+function penDown(X,Y,e){
+  if(!S.origin){const ll=map.containerPointToLatLng([X,Y]);S.origin={lat:ll.lat,lng:ll.lng};}
+  const v=view(),[x,y]=v.inv(X,Y),A=S.anchors,n=A.length;
+  selCorner=-1;
+  if(redraw&&redraw.i>=n)redraw=null;
+  if(redraw){
+    const iB=(redraw.i+1)%n,B=A[iB],PB=v.T(B.x,B.y);
+    if(hyp(PB[0]-X,PB[1]-Y)<10){snapshot();sel=iB;drag={type:'pull',i:iB};redraw=null;updHint();rebuild();toast('Tronçon redessiné');return;}
+    const h=hitHandle(X,Y); if(h){snapshot();drag={type:'handle',...h,alt:e.altKey};return;}
+    const ai=hitAnchor(X,Y); if(ai>=0){snapshot();sel=ai;drag={type:'anchor',i:ai,ox:x-A[ai].x,oy:y-A[ai].y};return;}
+    snapshot();const ins=redraw.i+1;
+    A.splice(ins,0,{x,y,hi:{x:0,y:0},ho:{x:0,y:0},w:A[redraw.i].w,sym:true,lanes:A[redraw.i].lanes||null});
+    remapG(g=>g>=ins?g+1:g);redraw.i=ins;sel=ins;drag={type:'pull',i:ins};rebuild();return;
+  }
+  const cont=n>0&&!S.closed&&penCont;
+  if(cont&&n>=3){const F=v.T(A[0].x,A[0].y);if(hyp(F[0]-X,F[1]-Y)<10){snapshot();S.closed=true;penCont=false;sel=0;drag={type:'pull',i:0};rebuild();toast('Circuit bouclé');return;}}
+  const h=hitHandle(X,Y); if(h){snapshot();drag={type:'handle',...h,alt:e.altKey};return;}
+  const ai=hitAnchor(X,Y);
+  if(ai>=0){
+    if(!cont&&!S.closed&&n>1&&(ai===0||ai===n-1)){ // reprendre la route par un bout
+      snapshot();if(ai===0)reverseActive();penCont=true;sel=S.anchors.length-1;rebuild();toast('On reprend cette route par ce bout');return;}
+    snapshot();sel=ai;drag=e.altKey?{type:'pull',i:ai}:{type:'anchor',i:ai,ox:x-A[ai].x,oy:y-A[ai].y};return;
+  }
+  const oa=anchorOther(X,Y);
+  if(oa){
+    if(cont&&oa.end){snapshot();joinPaths(S.active,oa.p,oa.i===0);penCont=false;sel=-1;rebuild();toast('Routes assemblées en une seule');return;}
+    setActive(oa.p);
+    if(oa.end&&S.anchors.length>1){snapshot();if(oa.i===0)reverseActive();penCont=true;sel=S.anchors.length-1;rebuild();toast('On reprend cette route par ce bout');return;}
+    snapshot();sel=oa.i;drag={type:'anchor',i:oa.i,ox:x-S.anchors[oa.i].x,oy:y-S.anchors[oa.i].y};rebuild();return;
+  }
+  if(n>=2){const np=nearestPath(X,Y);if(np&&np.d<7){const i=Math.floor(np.g),t=np.g-i;if(t>.03&&t<.97){snapshot();splitAt(i,t);sel=i+1;drag={type:'anchor',i:sel,ox:0,oy:0};rebuild();return;}}}
+  const tg=snapTarget(X,Y,cont);
+  let px=x,py=y;if(tg){px=tg.np.p.x;py=tg.np.p.y;}
+  snapshot();
+  if(!cont){ // nouvelle route
+    if(S.anchors.length){S.paths.push(newPath());S.active=S.paths.length-1;}
+    S.anchors.push({x:px,y:py,hi:{x:0,y:0},ho:{x:0,y:0},w:0,sym:true,lanes:null});
+    penCont=true;sel=0;selSeg=-1;drag={type:'pull',i:0};rebuild();
+    toast(tg?'Nouvelle route, branchée sur la route existante':'Nouvelle route');return;
+  }
+  A.push({x:px,y:py,hi:{x:0,y:0},ho:{x:0,y:0},w:0,sym:true,lanes:A[n-1].lanes||null});
+  sel=A.length-1;drag={type:'pull',i:sel};
+  if(tg){penCont=false;toast('Route fusionnée : clique ailleurs pour en commencer une autre');}
+  rebuild();
+}
+function editDown(X,Y,e){
+  const v=view(); if(!v) return; const [x,y]=v.inv(X,Y),A=S.anchors;
+  const gr=hitGrip(X,Y); if(gr){snapshot();drag={type:'grip',seg:selSeg};return;}
+  selSeg=-1;
+  const h=hitHandle(X,Y); if(h){snapshot();drag={type:'handle',...h,alt:e.altKey};return;}
+  const ai=hitAnchor(X,Y); if(ai>=0){snapshot();sel=ai;selCorner=-1;drag=e.altKey?{type:'pull',i:ai}:{type:'anchor',i:ai,ox:x-A[ai].x,oy:y-A[ai].y};return;}
+  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;return;}
+  sel=-1;selCorner=-1;
+  const np=nearestPath(X,Y);if(onTrack(np))selSeg=Math.min(G.segs-1,Math.floor(np.g));
+}
+function cornerDown(X,Y){
+  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;pendingCorner=null;return;}
+  const np=nearestPath(X,Y); if(!onTrack(np)){pendingCorner=null;return;}
+  if(pendingCorner===null){pendingCorner=np.g;selCorner=-1;return;}
+  let g1=pendingCorner,g2=np.g; pendingCorner=null;
+  const s1=gToS(g1),s2=gToS(g2);
+  if(S.closed){if(mod(s2-s1,G.total)>G.total/2){const t=g1;g1=g2;g2=t;}}
+  else if(s2<s1){const t=g1;g1=g2;g2=t;}
+  snapshot(); S.corners.push({g1,g2,stops:1}); selCorner=S.corners.length-1; sel=-1; rebuild();
+  toast('Virage ajouté : règle le nombre d’arrêts à droite');
+}
+function cellAt(X,Y){
+  const np=nearestPath(X,Y);if(!onTrack(np))return null;
+  const v=view(),[x,y]=v.inv(X,Y),p=np.p,T=G.total;let f=0,bd=1e9;for(let i=0;i<=40;i++){const ff=-.5+i/40,q=lat(p,ff),d=hyp(q[0]-x,q[1]-y);if(d<bd){bd=d;f=ff;}}
+  return G.cells.find(cl=>f>=cl.lo&&f<=cl.hi&&(S.closed?mod(np.s-cl.sa,T)<=cl.sb-cl.sa:np.s>=cl.sa&&np.s<=cl.sb))||null;
+}
+function arrowDown(X,Y){
+  const cl=cellAt(X,Y);if(!cl){return;}
+  const hold=cl.corner>=0?S.corners[cl.corner]:S.paths[S.active],def=cl.corner>=0?0:3;snapshot();hold.arrows=hold.arrows||{};
+  const nx=((cl.arrow!=null?cl.arrow:def)+1)%4;if(nx===def)delete hold.arrows[cl.akey];else hold.arrows[cl.akey]=nx;
+  rebuild();toast(['Tout droit','Tout droit + à gauche','Tout droit + à droite','Aucune flèche'][nx]);
+}
+function startDown(X,Y){const np=nearestPath(X,Y);if(!onTrack(np))return;snapshot();S.start=np.g;S.startPath=S.active;rebuild();toast('Ligne de départ placée');}
+
+cv.addEventListener('pointermove',e=>{
+  if(midPan){map.panBy([midPan.x-e.clientX,midPan.y-e.clientY],{animate:false});midPan={x:e.clientX,y:e.clientY};return;}
+  const [X,Y]=pt(e); mouse=[X,Y];
+  if(drag){
+    if(hyp(X-drag.X,Y-drag.Y)>3)drag.moved=true;
+    const v=view(),[x,y]=v.inv(X,Y),a=S.anchors[drag.i!=null?drag.i:0];
+    if(drag.type==='anchor'){a.x=x-drag.ox;a.y=y-drag.oy;}
+    else if(drag.type==='pull'&&drag.moved){const dx=x-a.x,dy=y-a.y;a.ho={x:dx,y:dy};if(e.altKey)a.sym=false;else{a.hi={x:-dx,y:-dy};a.sym=true;}}
+    else if(drag.type==='handle'){
+      const other=drag.sd==='hi'?'ho':'hi';a[drag.sd]={x:x-a.x,y:y-a.y};
+      if(drag.alt||e.altKey)a.sym=false;
+      else if(a.sym){const h=a[drag.sd],hl=hyp(h.x,h.y)||1,ol=hyp(a[other].x,a[other].y)||hl;a[other]={x:-h.x/hl*ol,y:-h.y/hl*ol};}
+    }
+    else if(drag.type==='grip'){const p=at(gToS(drag.seg+.5)),nl=Math.max(1,Math.min(6,Math.round(2*Math.abs((x-p.x)*p.nx+(y-p.y)*p.ny)/S.laneW)));if(nl!==segLanes(drag.seg)){S.anchors[drag.seg].lanes=nl;selSeg=drag.seg;}selSeg=drag.seg;}
+    rebuild(false);
+  }else cursorFor(X,Y);
+  draw();
+});
+cv.addEventListener('pointerup',e=>{
+  if(midPan){midPan=null;scheduleSave();const [X,Y]=pt(e);cursorFor(X,Y);return;}
+  if(drag){if(drag.type==='grip')selSeg=drag.seg;drag=null;if(undoS.length&&undoS[undoS.length-1]===JSON.stringify(S))undoS.pop();rebuild();}
+});
+cv.addEventListener('pointerleave',()=>{if(!drag){mouse=null;draw();}});
+function cursorFor(X,Y){
+  let c='default';
+  if(tool==='pen')c='crosshair';
+  if(tool==='corner'||tool==='start'||tool==='cut'||tool==='arrow')c='crosshair';
+  if(tool==='edit'||tool==='pen'){if(hitHandle(X,Y)||hitAnchor(X,Y)>=0)c='move';else if(tool==='edit'&&hitGrip(X,Y))c='ew-resize';}
+  if(tool!=='pen'&&hitFlag(X,Y)>=0)c='pointer';
+  cv.style.cursor=c;
+}
+
+/* ---------- outils & clavier ---------- */
+const HINTS={
+  pen:['Plume','Clic-glisser : courbe · finir sur une autre route : fusion · clic sur un bout jaune : assembler · Entrée : terminer la route · clic sur le 1er point : boucler'],
+  edit:['Sélection','Clic sur la route : cases de large du tronçon (touches 1-6 ou losanges jaunes) · glisser points et poignées · Alt+glisser : poignée indépendante · double-clic : lisse/anguleux · losanges jaunes : largeur · Suppr ou clic droit : supprimer'],
+  pan:['Main','Glisser pour déplacer la carte'],
+  arrow:['Flèches','Clic sur une case : tout droit → + à gauche → + à droite → aucune (virages : tout droit par défaut, ailleurs : aucune)'],
+  corner:['Virage','Clique le début puis la fin du virage sur le tracé · clic sur un drapeau pour régler ses arrêts · clic droit dessus : supprimer'],
+  cut:['Ciseaux','Clique le début puis la fin du tronçon à refaire, dans le sens de course : il est retiré et tu le redessines à la plume · Échap : annuler'],
+  start:['Départ','Clique sur le tracé pour placer la ligne de départ (la numérotation des cases part de là)']
+};
+function updHint(){
+  if(redraw&&tool==='pen'){$('stTool').textContent='Plume · redessin';$('stHint').textContent='Pose les nouveaux points (clic ou clic-glisser) · clique le point cerclé de jaune ou Entrée pour raccorder · Échap : remettre l’ancien tronçon';}
+  else{$('stTool').textContent=HINTS[tool][0];$('stHint').textContent=HINTS[tool][1]+' · clic molette maintenu : déplacer la carte';}
+}
+function setTool(t){
+  tool=t; pendingCorner=null; cutPending=null;
+  document.querySelectorAll('.tool').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+  cv.style.pointerEvents=t==='pan'?'none':'auto';
+  updHint();
+  cv.style.cursor=t==='edit'?'default':'crosshair'; draw();
+}
+document.querySelectorAll('.tool').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+const typing=()=>{const a=document.activeElement;return a&&(a.tagName==='INPUT'&&a.type!=='range'&&a.type!=='checkbox'||a.tagName==='SELECT'||a.tagName==='TEXTAREA');};
+document.addEventListener('keydown',e=>{
+  if(typing())return;
+  const k=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?doRedo():doUndo();return;}
+  if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();doRedo();return;}
+  if(e.ctrlKey||e.metaKey||e.altKey)return;
+  if(e.code==='Space'){e.preventDefault();if(!spacePan&&tool!=='pan'){spacePan=true;cv.style.pointerEvents='none';map.getContainer().style.cursor='grab';}return;}
+  if(k==='p')setTool('pen');else if(k==='a'||k==='v')setTool('edit');else if(k==='f')setTool('arrow');else if(k==='c')setTool('corner');else if(k==='d')setTool('start');else if(k==='x')setTool('cut');
+  else if(selSeg>=0&&/^[1-6]$/.test(k)){setSegLanes(selSeg,+k);}
+  else if(k==='enter'){if(redraw){finishRedraw();}else if(penCont&&S.anchors.length){penCont=false;draw();toast('Route terminée');}e.preventDefault();}
+  else if((k==='delete'||k==='backspace')&&e.shiftKey){clearAll();e.preventDefault();}
+  else if(k==='delete'||k==='backspace'){
+    if(selCorner>=0){snapshot();S.corners.splice(selCorner,1);selCorner=-1;rebuild();}
+    else if(sel>=0){snapshot();delAnchor(sel);rebuild();}
+    e.preventDefault();
+  }
+  else if(k==='escape'){if(redraw){cancelRedraw();return;}penCont=false;cutPending=null;selSeg=-1;pendingCorner=null;sel=-1;selCorner=-1;updPanel();draw();}
+});
+document.addEventListener('keyup',e=>{if(e.code==='Space'&&spacePan){spacePan=false;cv.style.pointerEvents=tool==='pan'?'none':'auto';map.getContainer().style.cursor='';draw();}});
+
+/* ---------- historique & sauvegarde ---------- */
+function snapshot(){undoS.push(JSON.stringify(S));if(undoS.length>150)undoS.shift();redoS.length=0;updUndo();}
+function restore(str){S=wrap(JSON.parse(str));penCont=false;sel=-1;selSeg=-1;selCorner=-1;pendingCorner=null;cutPending=null;redraw=null;updHint();syncUI();rebuild();}
+function doUndo(){if(!undoS.length)return;redoS.push(JSON.stringify(S));restore(undoS.pop());updUndo();}
+function doRedo(){if(!redoS.length)return;undoS.push(JSON.stringify(S));restore(redoS.pop());updUndo();}
+function updUndo(){$('bUndo').disabled=!undoS.length;$('bRedo').disabled=!redoS.length;}
+$('bUndo').onclick=doUndo; $('bRedo').onclick=doRedo;
+
+let saveT=0;
+function scheduleSave(){clearTimeout(saveT);saveT=setTimeout(()=>{try{const c=map.getCenter();S.view={c:[c.lat,c.lng],z:map.getZoom(),base:baseKey};localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}},400);}
+function rebuild(full=true){buildAll();draw();if(full){updStats();updPanel();scheduleSave();}}
+
+/* ---------- panneau ---------- */
+function syncUI(){
+  $('name').value=S.name||'';
+  $('lanes').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.n===S.lanes));
+  $('laneW').value=S.laneW;$('laneWv').textContent=(+S.laneW).toFixed(1).replace('.',',')+' m';
+  $('cellLen').value=S.cellLen;$('cellLenv').textContent=S.cellLen+' m';
+  $('bLoop').textContent=S.closed?'Ouvrir la boucle':'Boucler le circuit';
+}
+const lanesEl=$('lanes');
+[1,2,3,4,5,6].forEach(n=>{const b=document.createElement('button');b.textContent=n;b.dataset.n=n;b.onclick=()=>{snapshot();S.lanes=n;syncUI();rebuild();};lanesEl.appendChild(b);});
+$('name').oninput=e=>{S.name=e.target.value;scheduleSave();};
+$('laneW').addEventListener('pointerdown',snapshot);
+$('laneW').oninput=e=>{S.laneW=+e.target.value;$('laneWv').textContent=S.laneW.toFixed(1).replace('.',',')+' m';rebuild();};
+$('bAllW').onclick=()=>{if(!S.anchors.length)return;snapshot();S.anchors.forEach(a=>a.lanes=null);rebuild();toast(`Tout le tracé passe à ${S.lanes} case${S.lanes>1?'s':''} de large`);};
+$('cellLen').addEventListener('pointerdown',snapshot);
+$('cellLen').oninput=e=>{S.cellLen=+e.target.value;$('cellLenv').textContent=S.cellLen+' m';rebuild();};
+$('bLoop').onclick=()=>{if(S.anchors.length<3&&!S.closed){toast('Il faut au moins 3 points pour boucler');return;}snapshot();S.closed=!S.closed;clampG();syncUI();rebuild();};
+$('bRev').onclick=reverseDir;
+$('bFit').onclick=fit;
+function fit(){if(!S.origin)return;let b=L.latLngBounds([]);Gs.forEach(g=>g&&g.pts.forEach((p,i)=>{if(i%8===0)b.extend(toLatLng(p.x,p.y));}));if(!b.isValid())return;map.fitBounds(b,{padding:[50,50]});}
+
+$('base').onchange=e=>{Object.values(layers).forEach(l=>map.removeLayer(l));baseKey=e.target.value;if(layers[baseKey]){layers[baseKey].addTo(map);layers[baseKey].setOpacity(+$('baseOp').value);}scheduleSave();};
+$('baseOp').oninput=e=>{const v=+e.target.value;Object.values(layers).forEach(l=>l.setOpacity(v));$('baseOpv').textContent=Math.round(v*100)+' %';};
+$('trkOp').oninput=e=>{cv.style.opacity=e.target.value;$('trkOpv').textContent=Math.round(e.target.value*100)+' %';};
+$('oCells').onchange=e=>{opt.cells=e.target.checked;draw();};
+$('oNum').onchange=e=>{opt.numbers=e.target.checked;draw();};
+$('oHandles').onchange=e=>{opt.handles=e.target.checked;draw();};
+
+function updPanel(){
+  const body=$('selBody'),title=$('selTitle');
+  if(selCorner>=0&&S.corners[selCorner]){
+    const c=S.corners[selCorner],z=G.cz[selCorner];
+    title.textContent=`Virage ${selCorner+1}`;
+    body.innerHTML=`<div class="row"><span class="l">Arrêts</span><div class="seg" id="stops" style="flex:1">${[1,2,3,4].map(n=>`<button data-n="${n}" class="${n===c.stops?'on':''}">${n}</button>`).join('')}</div></div>
+      <div class="row"><span class="l">Nom</span><input type="text" id="cName" value="${(c.name||'').replace(/"/g,'&quot;')}" placeholder="ex. L’Épingle" style="flex:1;min-width:0"></div>
+      <p class="hint">Zone de ${z?Math.round(z.len):0} m : ${G.cells.filter(x=>x.corner===selCorner).length} cases.</p>
+      <div class="btns" style="margin-top:8px"><button class="b" id="delC">Supprimer le virage</button></div>`;
+    body.querySelectorAll('#stops button').forEach(b=>b.onclick=()=>{snapshot();c.stops=+b.dataset.n;rebuild();});
+    $('cName').addEventListener('focus',snapshot);
+    $('cName').oninput=e=>{c.name=e.target.value;build();draw();scheduleSave();};
+    $('delC').onclick=()=>{snapshot();S.corners.splice(selCorner,1);selCorner=-1;rebuild();};
+  }else if(selSeg>=0&&selSeg<G.segs){
+    const i=selSeg,A=S.anchors,a=A[i],b=A[(i+1)%A.length],cur=segLanes(i);
+    title.textContent=`Tronçon ${i+1} (points ${i+1} → ${(i+1)%A.length+1})`;
+    body.innerHTML=`<div class="row"><span class="l">Cases de large</span><div class="seg" id="segL" style="flex:1">${[1,2,3,4,5,6].map(n=>`<button data-n="${n}" class="${n===cur?'on':''}">${n}</button>`).join('')}</div></div>
+      <p class="hint">Largeur de la route : ${(cur*S.laneW).toFixed(1).replace('.',',')} m. ${a.lanes>=1?'Réglage propre à ce tronçon.':'Suit le réglage par défaut.'} Tu peux aussi tirer les losanges jaunes, ou taper 1 à 6. Pour changer de largeur au milieu d’une portion, ajoute d’abord un point à la plume.</p>
+      <div class="btns" style="margin-top:8px"><button class="b" id="segDef" ${a.lanes>=1?'':'disabled'}>Revenir au défaut</button></div>`;
+    body.querySelectorAll('#segL button').forEach(bt=>bt.onclick=()=>setSegLanes(i,+bt.dataset.n));
+    $('segDef').onclick=()=>setSegLanes(i,null);
+  }else if(sel>=0&&S.anchors[sel]){
+    const a=S.anchors[sel];
+    title.textContent=`Point ${sel+1} / ${S.anchors.length}`;
+    body.innerHTML=`<p class="hint" style="margin-top:0">Pour la largeur, clique sur la route juste après ce point : c’est le nombre de cases du tronçon qui la fixe.</p>
+      <div class="btns" style="margin-top:8px"><button class="b" id="aSm">${hyp(a.hi.x,a.hi.y)+hyp(a.ho.x,a.ho.y)>0.01?'Rendre anguleux':'Rendre lisse'}</button><button class="b" id="aDel">Supprimer le point</button></div>`;
+    $('aSm').onclick=()=>{snapshot();toggleSmooth(sel);rebuild();};
+    $('aDel').onclick=()=>{snapshot();delAnchor(sel);rebuild();};
+  }else{
+    title.textContent='Sélection';
+    body.innerHTML=S.anchors.length?`<p class="hint" style="margin:0">Avec l’outil Sélection : clique sur la route entre deux points pour choisir combien de cases de large fait ce tronçon, sur un drapeau pour régler les arrêts. La largeur de la route suit le nombre de cases.</p>`
+      :`<p class="hint" style="margin:0">Cherche un circuit ou une route, prends la Plume et clique-glisse le long de la piste pour poser les premiers points.</p>`;
+  }
+}
+function updStats(){
+  let len=0,cells=0,cz=0,stops=0;Gs.forEach(g=>{if(!g)return;len+=g.total;cells+=g.cells.length;cz+=g.cz.length;stops+=g.cz.reduce((a,z)=>a+z.stops,0);});
+  const nR=S.paths.filter(pp=>pp.anchors.length>1).length;
+  const rows=[['Routes',nR||'—'],['Longueur totale',len?Math.round(len).toLocaleString('fr-FR')+' m':'—'],['Route sélectionnée',S.anchors.length>1?`n° ${S.active+1} · ${Math.round(G.total).toLocaleString('fr-FR')} m · ${S.closed?'boucle':'ouverte'}`:'—'],['Cases',cells],['Virages',cz],['Arrêts au total',stops]];
+  $('stats').innerHTML=rows.map(r=>`<span>${r[0]}</span><b>${r[1]}</b>`).join('');
+}
+let toastT=0;
+function toast(m){const t=$('toast');t.textContent=m;t.style.display='block';clearTimeout(toastT);toastT=setTimeout(()=>t.style.display='none',2200);}
+
+/* ---------- recherche ---------- */
+async function search(){
+  const q=$('q').value.trim(),out=$('results'); if(!q)return;
+  out.innerHTML='<div>Recherche…</div>';
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=6&q='+encodeURIComponent(q));
+    const j=await r.json();
+    if(!j.length){out.innerHTML='<div>Aucun lieu trouvé. Essaie avec la ville ou le pays.</div>';return;}
+    out.innerHTML='';
+    j.forEach(p=>{const d=document.createElement('div');d.textContent=p.display_name;d.onclick=()=>{const b=p.boundingbox.map(Number);map.fitBounds([[b[0],b[2]],[b[1],b[3]]],{maxZoom:17});out.innerHTML='';};out.appendChild(d);});
+  }catch(e){out.innerHTML='<div>Recherche impossible : vérifie la connexion internet.</div>';}
+}
+$('bQ').onclick=search; $('q').addEventListener('keydown',e=>{if(e.key==='Enter')search();});
+
+/* ---------- fichiers ---------- */
+function download(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);}
+const fname=ext=>(S.name||'circuit').replace(/[^\w\-àâäéèêëîïôöùûüç ]+/gi,'').trim().replace(/\s+/g,'_')+ext;
+$('bSave').onclick=()=>{const c=map.getCenter();S.view={c:[c.lat,c.lng],z:map.getZoom(),base:baseKey};download(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),fname('.fdraw.json'));};
+$('bOpen').onclick=()=>$('fOpen').click();
+$('fOpen').onchange=async e=>{
+  const f=e.target.files[0]; if(!f)return;
+  try{const d=JSON.parse(await f.text());if(!Array.isArray(d.anchors)&&!Array.isArray(d.paths))throw 0;snapshot();S=load(d);penCont=false;sel=-1;selCorner=-1;syncUI();rebuild();fit();toast('Circuit chargé');}
+  catch(err){toast('Ce fichier n’est pas un circuit Formula Draw');}
+  e.target.value='';
+};
+function clearAll(){
+  if(!S.paths.some(pp=>pp.anchors.length)){toast('Il n’y a rien à supprimer');return;}
+  snapshot();const keep={lanes:S.lanes,cellLen:S.cellLen,laneW:S.laneW,view:S.view};
+  S=blank();Object.assign(S,keep);penCont=true;sel=-1;selSeg=-1;selCorner=-1;pendingCorner=null;cutPending=null;redraw=null;drag=null;
+  syncUI();updHint();rebuild();toast('Tout est supprimé · Ctrl+Z pour revenir en arrière');
+}
+$('bClear').onclick=clearAll;
+$('bNewR').onclick=()=>{penCont=false;sel=-1;selSeg=-1;setTool('pen');draw();toast('Clique pour commencer la nouvelle route (sur une route existante pour la brancher)');};
+$('bDelR').onclick=()=>{if(!S.anchors.length){toast('Aucune route sélectionnée');return;}snapshot();
+  if(S.paths.length>1){const a=S.active;S.paths.splice(a,1);if(S.startPath>a)S.startPath--;else if(S.startPath===a)S.startPath=0;S.active=Math.max(0,a-1);}
+  else S.paths[0]=newPath();
+  sel=-1;selSeg=-1;selCorner=-1;redraw=null;penCont=false;rebuild();toast('Route supprimée · Ctrl+Z pour revenir en arrière');};
+$('bNew').onclick=clearAll;
+$('bClrC').onclick=()=>{if(!S.corners.length){toast('Aucun virage à supprimer');return;}snapshot();S.corners=[];selCorner=-1;rebuild();toast('Virages supprimés · Ctrl+Z pour revenir en arrière');};
+/* ---------- carnet d'impression ---------- */
+const PAPER={a4:[21,29.7],a3:[29.7,42]};
+let pFmt='a4';
+function trackBox(){let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  Gs.forEach(g=>g&&g.pts.forEach(p=>{const r=p.w+12;minx=Math.min(minx,p.x-r);maxx=Math.max(maxx,p.x+r);miny=Math.min(miny,p.y-r);maxy=Math.max(maxy,p.y+r);}));
+  return minx<maxx?{minx,miny,maxx,maxy}:null;}
+function printPlan(){
+  const bx=trackBox();if(!bx)return null;
+  const sc=3/S.cellLen,ov=+$('pOv').value,m=.8; // cm par mètre, recouvrement, marge non imprimable
+  const bw=(bx.maxx-bx.minx)*sc,bh=(bx.maxy-bx.miny)*sc;
+  const best=[false,true].map(land=>{let [W,H]=PAPER[pFmt];if(land)[W,H]=[H,W];const wc=W-2*m,hc=H-2*m;
+    const cols=Math.max(1,Math.ceil((bw-ov)/(wc-ov))),rows=Math.max(1,Math.ceil((bh-ov)/(hc-ov)));
+    // pages réellement utiles (la piste passe dedans)
+    const used=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const x0=bx.minx+c*(wc-ov)/sc,y1=bx.maxy-r*(hc-ov)/sc,x1=x0+wc/sc,y0=y1-hc/sc;
+      if(Gs.some(g=>g&&g.pts.some(p=>p.x>x0-p.w&&p.x<x1+p.w&&p.y>y0-p.w&&p.y<y1+p.w)))used.push({r,c,x0,y1});}
+    return {land,W,H,wc,hc,cols,rows,used};}).sort((a,b)=>a.used.length-b.used.length)[0];
+  return Object.assign(best,{sc,ov,m,bx});
+}
+function updPrintInfo(){
+  const pl=printPlan();if(!pl){$('pInfo').innerHTML='<span>Trace d’abord un circuit.</span><b></b>';$('pGo').disabled=true;return;}
+  $('pGo').disabled=false;
+  const cw=(S.laneW*pl.sc).toFixed(1).replace('.',','),scale=Math.round(100/pl.sc);
+  $('pInfo').innerHTML=`<span>Échelle</span><b>≈ 1:${scale}</b><span>Taille d’une case</span><b>3,0 × ${cw} cm</b><span>Pages</span><b>${pl.used.length} ${pFmt.toUpperCase()} ${pl.land?'paysage':'portrait'} (+ plan d’assemblage)</b><span>Circuit imprimé</span><b>${Math.round((pl.bx.maxx-pl.bx.minx)*pl.sc)} × ${Math.round((pl.bx.maxy-pl.bx.miny)*pl.sc)} cm</b>`+(Math.abs(S.laneW*pl.sc-1.5)>.2?`<span style='grid-column:1/-1'>Pour des cases de 3 × 1,5 cm comme le jeu de base, règle « Largeur de case » sur ${(S.cellLen/2).toFixed(1).replace('.',',')} m.</span>`:'');
+}
+$('bPrint').onclick=()=>{$('printDlg').hidden=false;$('pProg').textContent='';$('pNum').checked=opt.numbers;updPrintInfo();};
+$('pCancel').onclick=()=>{$('printDlg').hidden=true;};
+$('pFmt').querySelectorAll('button').forEach(b=>b.onclick=()=>{pFmt=b.dataset.v;$('pFmt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));updPrintInfo();});
+$('pOv').onchange=updPrintInfo;
+function tileTpl(){return {sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+  ign:'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
+  osm:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}[baseKey]||null;}
+async function loadTiles(bx,prog){ // photos du fond de carte couvrant le circuit (zoom 19)
+  const tpl=tileTpl();if(!tpl||!S.origin)return null;
+  const z=19,n=Math.pow(2,z),c=Math.cos(S.origin.lat*Math.PI/180),m0=L.CRS.EPSG3857.project(L.latLng(S.origin.lat,S.origin.lng)),size=2*Math.PI*R/n;
+  const tx=x=>Math.floor((m0.x+x/c+Math.PI*R)/size),ty=y=>Math.floor((Math.PI*R-(m0.y+y/c))/size);
+  const x0=tx(bx.minx),x1=tx(bx.maxx),y0=ty(bx.maxy),y1=ty(bx.miny),list=[];
+  if((x1-x0+1)*(y1-y0+1)>900)return null;
+  for(let X=x0;X<=x1;X++)for(let Y=y0;Y<=y1;Y++)list.push({X,Y});
+  let done=0;
+  const load=t=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{t.img=im;done++;prog(done,list.length);res();};im.onerror=()=>{done++;prog(done,list.length);res();};
+    im.src=tpl.replace('{z}',z).replace('{x}',t.X).replace('{y}',t.Y);});
+  for(let i=0;i<list.length;i+=12)await Promise.all(list.slice(i,i+12).map(load));
+  // coin haut-gauche de chaque tuile en mètres locaux
+  list.forEach(t=>{t.lx=(-Math.PI*R+t.X*size-m0.x)*c;t.ly=(Math.PI*R-t.Y*size-m0.y)*c;t.lw=size*c;});
+  return list.filter(t=>t.img);
+}
+async function printBooklet(){
+  const pl=printPlan();if(!pl)return;
+  if(!window.jspdf){toast('Le module PDF n’a pas pu se charger (connexion internet ?)');return;}
+  const btn=$('pGo');btn.disabled=true;const prog=t=>{$('pProg').textContent=t;};
+  try{
+    const DPC=150/2.54,bg=$('pBg').value,numbers=$('pNum').checked;
+    let tiles=null;
+    if(bg==='map'){prog('Chargement des photos…');tiles=await loadTiles(pl.bx,(a,b)=>prog(`Chargement des photos… ${a}/${b}`));
+      if(!tiles||!tiles.length){toast('Fond de carte indisponible : impression sur fond herbe');tiles=null;}}
+    const {jsPDF}=window.jspdf,orient=pl.land?'landscape':'portrait';
+    const pdf=new jsPDF({orientation:orient,unit:'cm',format:pFmt});
+    const name=S.name||'Circuit',rowName=r=>String.fromCharCode(65+r),label=(r,c)=>rowName(r)+(c+1);
+    // --- page 1 : plan d'assemblage ---
+    {const W=pl.W,H=pl.H,cv2=document.createElement('canvas'),ppc=60;cv2.width=Math.round(W*ppc);cv2.height=Math.round(H*ppc);
+      const x=cv2.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv2.width,cv2.height);
+      const tw=pl.cols*(pl.wc-pl.ov)+pl.ov,th=pl.rows*(pl.hc-pl.ov)+pl.ov,avW=W-3,avH=H-6.4,f=Math.min(avW/tw,avH/th);
+      const ox=(W-tw*f)/2,oy=4.4;const k=pl.sc*f*ppc;
+      const T=(px,py)=>[(ox+(px-pl.bx.minx)*pl.sc*f)*ppc,(oy+(pl.bx.maxy-py)*pl.sc*f)*ppc];
+      renderAll(x,T,k,{cells:true,numbers:false,flag:Math.max(14,3.4*k),map:false});
+      x.font=`700 ${0.9*ppc}px 'Saira Semi Condensed',sans-serif`;x.fillStyle='#1d232b';x.textAlign='left';x.textBaseline='top';x.fillText(name,1.5*ppc,1*ppc);
+      x.font=`500 ${(pl.land?0.42:0.34)*ppc}px 'Saira Semi Condensed',sans-serif`;
+      x.fillText(`Plan d’assemblage — ${pl.used.length} pages ${pFmt.toUpperCase()} — échelle ≈ 1:${Math.round(100/pl.sc)} — cases ≈ 3 cm`,1.5*ppc,2.1*ppc);
+      x.fillText(`Coupez le bord gauche/haut de chaque page au ras du cadre, posez-la sur la bande claire de sa voisine`,1.5*ppc,2.75*ppc);
+      x.fillText(`(bord droit / bas) en alignant les croix rouges, puis scotchez au dos.`,1.5*ppc,3.3*ppc);
+      x.strokeStyle='#d7262e';x.lineWidth=2;x.fillStyle='#d7262e';x.textAlign='center';x.textBaseline='middle';x.font=`700 ${0.6*ppc}px 'Saira Semi Condensed',sans-serif`;
+      pl.used.forEach(u=>{const X0=(ox+u.c*(pl.wc-pl.ov)*f)*ppc,Y0=(oy+u.r*(pl.hc-pl.ov)*f)*ppc;x.strokeRect(X0,Y0,pl.wc*f*ppc,pl.hc*f*ppc);x.fillText(label(u.r,u.c),X0+pl.wc*f*ppc/2,Y0+pl.hc*f*ppc/2);});
+      pdf.addImage(cv2.toDataURL('image/jpeg',.9),'JPEG',0,0,W,H);}
+    // --- pages du circuit ---
+    for(let i=0;i<pl.used.length;i++){
+      const u=pl.used[i];prog(`Page ${i+1} / ${pl.used.length}…`);await new Promise(r=>setTimeout(r,0));
+      const cvp=document.createElement('canvas');cvp.width=Math.round(pl.wc*DPC);cvp.height=Math.round(pl.hc*DPC);
+      const x=cvp.getContext('2d'),k=pl.sc*DPC,T=(px,py)=>[(px-u.x0)*k,(u.y1-py)*k];
+      x.fillStyle=bg==='white'?'#fff':'#4f8a3c';x.fillRect(0,0,cvp.width,cvp.height);
+      if(tiles)tiles.forEach(t=>{const A=T(t.lx,t.ly),sz=t.lw*k;if(A[0]>cvp.width||A[1]>cvp.height||A[0]+sz<0||A[1]+sz<0)return;x.drawImage(t.img,A[0],A[1],sz+1,sz+1);});
+      renderAll(x,T,k,{cells:true,numbers,flag:.8*DPC,map:false});
+      // bandes de recouvrement (zone à recouvrir par la page voisine) + croix de repérage
+      const ovp=pl.ov*DPC;x.save();x.fillStyle='rgba(255,255,255,.28)';
+      const right=pl.used.some(v=>v.r===u.r&&v.c===u.c+1),bottom=pl.used.some(v=>v.r===u.r+1&&v.c===u.c);
+      if(right)x.fillRect(cvp.width-ovp,0,ovp,cvp.height);if(bottom)x.fillRect(0,cvp.height-ovp,cvp.width,ovp);x.restore();
+      x.strokeStyle='#d7262e';x.lineWidth=2;x.setLineDash([10,8]);x.beginPath();
+      if(right){x.moveTo(cvp.width-ovp,0);x.lineTo(cvp.width-ovp,cvp.height);}if(bottom){x.moveTo(0,cvp.height-ovp);x.lineTo(cvp.width,cvp.height-ovp);}x.stroke();x.setLineDash([]);
+      const cross=(cx,cy)=>{x.beginPath();x.moveTo(cx-18,cy);x.lineTo(cx+18,cy);x.moveTo(cx,cy-18);x.lineTo(cx,cy+18);x.lineWidth=3;x.strokeStyle='#fff';x.stroke();x.lineWidth=1.5;x.strokeStyle='#d7262e';x.stroke();};
+      [ovp/2,cvp.height/2,cvp.height-ovp/2].forEach(yy=>{cross(ovp/2,yy);cross(cvp.width-ovp/2,yy);});
+      [cvp.width/2].forEach(xx=>{cross(xx,ovp/2);cross(xx,cvp.height-ovp/2);});
+      // étiquette de page
+      x.fillStyle='rgba(29,35,43,.85)';x.fillRect(ovp+6,ovp+6,190,58);x.fillStyle='#f5c400';x.font="800 40px 'Saira Semi Condensed',sans-serif";x.textAlign='left';x.textBaseline='middle';
+      x.fillText(label(u.r,u.c),ovp+16,ovp+36);x.fillStyle='#fff';x.font="500 16px 'Saira Semi Condensed',sans-serif";x.fillText(name.slice(0,22),ovp+80,ovp+36);
+      if(i>0||true)pdf.addPage(pFmt,orient);
+      pdf.addImage(cvp.toDataURL('image/jpeg',.88),'JPEG',pl.m,pl.m,pl.wc,pl.hc);
+      // trait de coupe autour de la zone imprimée
+      pdf.setDrawColor(150);pdf.setLineWidth(.01);pdf.rect(pl.m,pl.m,pl.wc,pl.hc);
+      pdf.setFontSize(7);pdf.setTextColor(120);pdf.text(`${name} — page ${label(u.r,u.c)} — ${i+1}/${pl.used.length} — échelle ≈ 1:${Math.round(100/pl.sc)}`,pl.m,pl.H-.35);
+    }
+    prog('Enregistrement du PDF…');
+    pdf.save(fname(`_${pFmt.toUpperCase()}.pdf`));
+    prog(`Carnet prêt : ${pl.used.length} pages + le plan d’assemblage.`);
+  }catch(err){console.error(err);prog('Erreur : '+(err&&err.message||err));
+    if(String(err).includes('tainted')||String(err).includes('Tainted'))toast('Le fond de carte ne peut pas être imprimé ici : choisis « Herbe »');}
+  finally{btn.disabled=false;}
+}
+$('pGo').onclick=printBooklet;
+$('bPng').onclick=()=>{
+  if(!Gs.some(g=>g&&g.pts.length>1)){toast('Trace d’abord un circuit');return;}
+  let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  Gs.forEach(g=>g&&g.pts.forEach(p=>{const r=p.w/2+14;minx=Math.min(minx,p.x-r);maxx=Math.max(maxx,p.x+r);miny=Math.min(miny,p.y-r);maxy=Math.max(maxy,p.y+r);}));
+  let k=Math.max(1,+$('pxm').value||12);const lim=14000;k=Math.min(k,lim/(maxx-minx),lim/(maxy-miny));
+  const W=Math.ceil((maxx-minx)*k),H=Math.ceil((maxy-miny)*k),c=document.createElement('canvas');c.width=W;c.height=H;
+  const x=c.getContext('2d'),bg=$('pngBg').value;
+  if(bg==='grass'){x.fillStyle='#4f8a3c';x.fillRect(0,0,W,H);}else if(bg==='white'){x.fillStyle='#fff';x.fillRect(0,0,W,H);}
+  renderAll(x,(px,py)=>[(px-minx)*k,(maxy-py)*k],k,{cells:true,numbers:opt.numbers,flag:Math.max(22,3.4*k),map:false});
+  x.font=`800 ${Math.max(20,3*k)}px 'Saira Semi Condensed',sans-serif`;x.textAlign='left';x.textBaseline='top';x.fillStyle=bg==='white'?'#1d232b':'#fff';x.fillText(S.name||'',Math.max(12,k),Math.max(12,k));
+  c.toBlob(b=>{if(!b){toast('Image trop grande : baisse les px / m');return;}download(b,fname('.png'));toast(`Plateau exporté : ${W} × ${H} px`);},'image/png');
+};
+
+/* ---------- démarrage ---------- */
+try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(d&&(Array.isArray(d.anchors)||Array.isArray(d.paths))){S=load(d);penCont=false;}}catch(e){}
+if(S.view){map.setView(S.view.c,S.view.z);if(S.view.base&&S.view.base!=='sat'){$('base').value=S.view.base;$('base').onchange({target:$('base')});}}
+syncUI(); setTool('pen'); updUndo(); sizeCv(); rebuild();
+})();
+</script>
+</body>
+</html>
