@@ -856,7 +856,7 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
       c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.lineTo(cc[0],cc[1]);c.lineTo(d[0],d[1]);c.closePath();
       c.fillStyle=(r+col)%2?'#16181b':'#fff';c.fill();
     }
-    const B=T(p.x+p.nx*(p.w/2+3),p.y+p.ny*(p.w/2+3)),dx=p.tx,dy=-p.ty,sz=Math.max(8,1.8*k);
+    const B=T(p.x+p.nx*(p.w/2+3),p.y+p.ny*(p.w/2+3)),B2=T(p.x+p.nx*(p.w/2+3)+p.tx,p.y+p.ny*(p.w/2+3)+p.ty),bl=hyp(B2[0]-B[0],B2[1]-B[1])||1,dx=(B2[0]-B[0])/bl,dy=(B2[1]-B[1])/bl,sz=Math.max(8,1.8*k);
     c.beginPath();c.moveTo(B[0]+dx*sz,B[1]+dy*sz);c.lineTo(B[0]-dx*sz*.6-dy*sz*.7,B[1]-dy*sz*.6+dx*sz*.7);c.lineTo(B[0]-dx*sz*.6+dy*sz*.7,B[1]-dy*sz*.6-dx*sz*.7);c.closePath();
     c.fillStyle='#f5c400';c.fill();c.lineWidth=1.5;c.strokeStyle='#1b1b1b';c.stroke();
   }
@@ -867,7 +867,7 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
     let turn=p1.tx*p2.ty-p1.ty*p2.tx;
     if(Math.abs(turn)<.02){const a=at(z.s1+z.len*.35),b=at(z.s1+z.len*.65);turn=a.tx*b.ty-a.ty*b.tx;}
     const so=turn>0?-1:1,E=lat(pm,.5*so),M=lat(pm,0);let ux=E[0]-M[0],uy=E[1]-M[1];const ul=hyp(ux,uy)||1;ux/=ul;uy/=ul;
-    const A=T(E[0]+ux*1.8,E[1]+uy*1.8),dx=ux,dy=-uy,H=o.flag,len=H*1.4,C=[A[0]+dx*len,A[1]+dy*len];
+    const A=T(E[0]+ux*1.8,E[1]+uy*1.8),A2=T(E[0]+ux*2.8,E[1]+uy*2.8),al=hyp(A2[0]-A[0],A2[1]-A[1])||1,dx=(A2[0]-A[0])/al,dy=(A2[1]-A[1])/al,H=o.flag,len=H*1.4,C=[A[0]+dx*len,A[1]+dy*len];
     c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(C[0],C[1]);c.lineWidth=Math.max(2,H*.1);c.strokeStyle='#1b1b1b';c.lineCap='round';c.stroke();c.lineCap='butt';
     const bb=drawBadge(c,C,dx,H,z,o.map&&ci===selCorner&&pi===S.active);
     if(o.map)flagBoxes.push({p:pi,ci,...bb});
@@ -1349,23 +1349,48 @@ let pFmt='a4';
 function trackBox(){let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
   Gs.forEach(g=>g&&g.pts.forEach(p=>{const r=p.w+12;minx=Math.min(minx,p.x-r);maxx=Math.max(maxx,p.x+r);miny=Math.min(miny,p.y-r);maxy=Math.max(maxy,p.y+r);}));
   return minx<maxx?{minx,miny,maxx,maxy}:null;}
+/* Feuilles posées le long de la piste : chaque feuille suit la direction du tronçon qu'elle couvre
+   (angle libre), la piste est centrée, et deux feuilles successives se recouvrent de « ov » cm. */
 function printPlan(){
   const bx=trackBox();if(!bx)return null;
-  const sc=3/S.cellLen,ov=+$('pOv').value,m=.8; // cm par mètre, recouvrement, marge non imprimable
-  const bw=(bx.maxx-bx.minx)*sc,bh=(bx.maxy-bx.miny)*sc;
-  const best=[false,true].map(land=>{let [W,H]=PAPER[pFmt];if(land)[W,H]=[H,W];const wc=W-2*m,hc=H-2*m;
-    const cols=Math.max(1,Math.ceil((bw-ov)/(wc-ov))),rows=Math.max(1,Math.ceil((bh-ov)/(hc-ov)));
-    // pages réellement utiles (la piste passe dedans)
-    const used=[];for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){const x0=bx.minx+c*(wc-ov)/sc,y1=bx.maxy-r*(hc-ov)/sc,x1=x0+wc/sc,y0=y1-hc/sc;
-      if(Gs.some(g=>g&&g.pts.some(p=>p.x>x0-p.w&&p.x<x1+p.w&&p.y>y0-p.w&&p.y<y1+p.w)))used.push({r,c,x0,y1});}
-    return {land,W,H,wc,hc,cols,rows,used};}).sort((a,b)=>a.used.length-b.used.length)[0];
-  return Object.assign(best,{sc,ov,m,bx});
+  const sc=3/S.cellLen,ov=+$('pOv').value,m=.8,pad=1.2;
+  let [W,H]=PAPER[pFmt];if(W<H)[W,H]=[H,W]; // feuille en paysage, le long de la piste
+  const wc=W-2*m,hc=H-2*m,Lm=(wc-2*pad)/sc,Hm=(hc-2*pad)/sc,ovm=ov/sc;
+  const pages=[];
+  const inPage=(pg,x,y)=>{const dx=x-pg.cx,dy=y-pg.cy,u=dx*Math.cos(pg.th)+dy*Math.sin(pg.th),v=-dx*Math.sin(pg.th)+dy*Math.cos(pg.th);return Math.abs(u)<=pg.hw&&Math.abs(v)<=pg.hh;};
+  S.paths.forEach((pp,p)=>{const g=Gs[p];if(!g||g.pts.length<2)return;
+    withPath(p,()=>{
+      const T=G.total,closed=S.closed,s0=closed?gToS(S.start):0,end=closed?s0+T+ovm:T;
+      const pts=(sa,sb)=>{const n=Math.max(4,Math.ceil((sb-sa)/1.2)),out=[];for(let i=0;i<=n;i++){const q=at(sa+(sb-sa)*i/n),f=.5+1.6/q.w;out.push(lat(q,f),lat(q,-f));}return out;};
+      const fit=(sa,sb)=>{const P=pts(sa,sb),A=at(sa),B=at(sb);let th=Math.atan2(B.y-A.y,B.x-A.x);if(hyp(B.x-A.x,B.y-A.y)<3)th=Math.atan2(A.ty,A.tx);
+        let best=null;
+        for(const t of [th,th+Math.PI/2]){const c=Math.cos(t),si=Math.sin(t);let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+          P.forEach(([x,y])=>{const u=x*c+y*si,v=-x*si+y*c;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v);});
+          const ok=u1-u0<=Lm&&v1-v0<=Hm;const um=(u0+u1)/2,vm=(v0+v1)/2;
+          if(ok&&(!best||(u1-u0)*(v1-v0)<best.area))best={th:t,cx:um*c-vm*si,cy:um*si+vm*c,area:(u1-u0)*(v1-v0)};}
+        return best;};
+      let sa=s0,guard=0;
+      while(sa<end-1e-6&&guard++<400){
+        let step=Math.max(2,S.cellLen/2),d=Math.max(2*ovm,step),good=fit(sa,Math.min(end,sa+d)),gd=d;
+        if(!good){good=fit(sa,Math.min(end,sa+2))||(()=>{const A=at(sa);return {th:Math.atan2(A.ty,A.tx),cx:A.x,cy:A.y};})();gd=2;}
+        else{while(sa+gd<end){const nd=gd+step,f=fit(sa,Math.min(end,sa+nd));if(!f)break;good=f;gd=nd;}}
+        const sb=Math.min(end,sa+gd);
+        const pg={p,sa,sb,th:good.th,cx:good.cx,cy:good.cy,hw:wc/2/sc,hh:hc/2/sc};
+        // feuille inutile si sa portion de piste est déjà entièrement sur d'autres feuilles
+        const cov=pts(sa,sb).every(([x,y])=>pages.some(q=>inPage(q,x,y)));
+        if(!cov)pages.push(pg);
+        if(sb>=end-1e-6)break;
+        sa=Math.max(sa+1,sb-ovm);
+      }
+    });
+  });
+  return {sc,ov,m,W,H,wc,hc,pages,bx,inPage};
 }
 function updPrintInfo(){
-  const pl=printPlan();if(!pl){$('pInfo').innerHTML='<span>Trace d’abord un circuit.</span><b></b>';$('pGo').disabled=true;return;}
+  const pl=printPlan();if(!pl||!pl.pages.length){$('pInfo').innerHTML='<span>Trace d’abord un circuit.</span><b></b>';$('pGo').disabled=true;return;}
   $('pGo').disabled=false;
   const cw=(S.laneW*pl.sc).toFixed(1).replace('.',','),scale=Math.round(100/pl.sc);
-  $('pInfo').innerHTML=`<span>Échelle</span><b>≈ 1:${scale}</b><span>Taille d’une case</span><b>3,0 × ${cw} cm</b><span>Pages</span><b>${pl.used.length} ${pFmt.toUpperCase()} ${pl.land?'paysage':'portrait'} (+ plan d’assemblage)</b><span>Circuit imprimé</span><b>${Math.round((pl.bx.maxx-pl.bx.minx)*pl.sc)} × ${Math.round((pl.bx.maxy-pl.bx.miny)*pl.sc)} cm</b>`+(Math.abs(S.laneW*pl.sc-1.5)>.2?`<span style='grid-column:1/-1'>Pour des cases de 3 × 1,5 cm comme le jeu de base, règle « Largeur de case » sur ${(S.cellLen/2).toFixed(1).replace('.',',')} m.</span>`:'');
+  $('pInfo').innerHTML=`<span>Échelle</span><b>≈ 1:${scale}</b><span>Taille d’une case</span><b>3,0 × ${cw} cm</b><span>Feuilles</span><b>${pl.pages.length} ${pFmt.toUpperCase()} (+ plan)</b><span>Disposition</span><b>le long de la piste</b>`+(Math.abs(S.laneW*pl.sc-1.5)>.2?`<span style='grid-column:1/-1'>Pour des cases de 3 × 1,5 cm comme le jeu de base, règle « Largeur de case » sur ${(S.cellLen/2).toFixed(1).replace('.',',')} m.</span>`:'');
 }
 $('bPrint').onclick=()=>{$('printDlg').hidden=false;$('pProg').textContent='';$('pNum').checked=opt.numbers;updPrintInfo();};
 $('pCancel').onclick=()=>{$('printDlg').hidden=true;};
@@ -1374,79 +1399,107 @@ $('pOv').onchange=updPrintInfo;
 function tileTpl(){return {sat:'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
   ign:'https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTHOIMAGERY.ORTHOPHOTOS&STYLE=normal&TILEMATRIXSET=PM&FORMAT=image/jpeg&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}',
   osm:'https://tile.openstreetmap.org/{z}/{x}/{y}.png'}[baseKey]||null;}
-async function loadTiles(bx,prog){ // photos du fond de carte couvrant le circuit (zoom 19)
-  const tpl=tileTpl();if(!tpl||!S.origin)return null;
-  const z=19,n=Math.pow(2,z),c=Math.cos(S.origin.lat*Math.PI/180),m0=L.CRS.EPSG3857.project(L.latLng(S.origin.lat,S.origin.lng)),size=2*Math.PI*R/n;
-  const tx=x=>Math.floor((m0.x+x/c+Math.PI*R)/size),ty=y=>Math.floor((Math.PI*R-(m0.y+y/c))/size);
-  const x0=tx(bx.minx),x1=tx(bx.maxx),y0=ty(bx.maxy),y1=ty(bx.miny),list=[];
-  if((x1-x0+1)*(y1-y0+1)>900)return null;
-  for(let X=x0;X<=x1;X++)for(let Y=y0;Y<=y1;Y++)list.push({X,Y});
-  let done=0;
-  const load=t=>new Promise(res=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{t.img=im;done++;prog(done,list.length);res();};im.onerror=()=>{done++;prog(done,list.length);res();};
-    im.src=tpl.replace('{z}',z).replace('{x}',t.X).replace('{y}',t.Y);});
-  for(let i=0;i<list.length;i+=12)await Promise.all(list.slice(i,i+12).map(load));
-  // coin haut-gauche de chaque tuile en mètres locaux
+/* Photos du fond de carte pour l'impression.
+   On les télécharge nous-mêmes (fetch en CORS, sans cache) puis on les dessine depuis un blob local :
+   le navigateur réutilisait sinon les tuiles déjà affichées par la carte, qui ne sont pas autorisées
+   à être exportées, et la photo disparaissait du PDF. */
+let printTileErr='';
+async function loadTiles(bx,prog){
+  const tpl=tileTpl();printTileErr='';if(!tpl){printTileErr='aucun fond de carte choisi';return null;}if(!S.origin)return null;
+  const c=Math.cos(S.origin.lat*Math.PI/180),m0=L.CRS.EPSG3857.project(L.latLng(S.origin.lat,S.origin.lng));
+  let z=19,size,x0,x1,y0,y1;
+  for(;z>=14;z--){size=2*Math.PI*R/Math.pow(2,z);
+    const tx=x=>Math.floor((m0.x+x/c+Math.PI*R)/size),ty=y=>Math.floor((Math.PI*R-(m0.y+y/c))/size);
+    x0=tx(bx.minx);x1=tx(bx.maxx);y0=ty(bx.maxy);y1=ty(bx.miny);if((x1-x0+1)*(y1-y0+1)<=700)break;}
+  const list=[];for(let X=x0;X<=x1;X++)for(let Y=y0;Y<=y1;Y++)list.push({X,Y});
+  let done=0,fail=0;
+  const sep=tpl.includes('?')?'&':'?';
+  const load=async t=>{
+    const url=tpl.replace('{z}',z).replace('{x}',t.X).replace('{y}',t.Y)+sep+'print=1';
+    try{
+      const r=await fetch(url,{mode:'cors',cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);
+      const blob=await r.blob();
+      t.img=await (window.createImageBitmap?createImageBitmap(blob):new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=URL.createObjectURL(blob);}));
+    }catch(e){fail++;printTileErr=String(e&&e.message||e);}
+    done++;prog(done,list.length);
+  };
+  for(let i=0;i<list.length;i+=10)await Promise.all(list.slice(i,i+10).map(load));
   list.forEach(t=>{t.lx=(-Math.PI*R+t.X*size-m0.x)*c;t.ly=(Math.PI*R-t.Y*size-m0.y)*c;t.lw=size*c;});
-  return list.filter(t=>t.img);
+  const ok=list.filter(t=>t.img);
+  if(ok.length&&fail)toast(`${fail} photo(s) n’ont pas pu être chargées sur ${list.length}`);
+  return ok;
 }
+function drawTiles(x,tiles,A,B,E,C2,D,F){ // dessine les photos avec la même transformation que la piste
+  tiles.forEach(t=>{const w=t.img.width||256,s1=t.lw/w;x.setTransform(A*s1,C2*s1,-B*s1,-D*s1,A*t.lx+B*t.ly+E,C2*t.lx+D*t.ly+F);x.drawImage(t.img,0,0,w+1,w+1);});
+  x.setTransform(1,0,0,1,0,0);
+}
+function pageCorners(pg){const c=Math.cos(pg.th),si=Math.sin(pg.th);return [[-1,-1],[1,-1],[1,1],[-1,1]].map(([a,b])=>[pg.cx+a*pg.hw*c-b*pg.hh*si,pg.cy+a*pg.hw*si+b*pg.hh*c]);}
+function pagesBox(pl){let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
+  pl.pages.forEach(pg=>pageCorners(pg).forEach(([a,b])=>{minx=Math.min(minx,a);maxx=Math.max(maxx,a);miny=Math.min(miny,b);maxy=Math.max(maxy,b);}));
+  return {minx:minx-5,miny:miny-5,maxx:maxx+5,maxy:maxy+5};}
 async function printBooklet(){
-  const pl=printPlan();if(!pl)return;
+  const pl=printPlan();if(!pl||!pl.pages.length)return;
   if(!window.jspdf){toast('Le module PDF n’a pas pu se charger (connexion internet ?)');return;}
   const btn=$('pGo');btn.disabled=true;const prog=t=>{$('pProg').textContent=t;};
   try{
-    const DPC=150/2.54,bg=$('pBg').value,numbers=$('pNum').checked;
+    const DPC=150/2.54,bg=$('pBg').value,numbers=$('pNum').checked,N=pl.pages.length;
     let tiles=null;
-    if(bg==='map'){prog('Chargement des photos…');tiles=await loadTiles(pl.bx,(a,b)=>prog(`Chargement des photos… ${a}/${b}`));
-      if(!tiles||!tiles.length){toast('Fond de carte indisponible : impression sur fond herbe');tiles=null;}}
-    const {jsPDF}=window.jspdf,orient=pl.land?'landscape':'portrait';
-    const pdf=new jsPDF({orientation:orient,unit:'cm',format:pFmt});
-    const name=S.name||'Circuit',rowName=r=>String.fromCharCode(65+r),label=(r,c)=>rowName(r)+(c+1);
-    // --- page 1 : plan d'assemblage ---
-    {const W=pl.W,H=pl.H,cv2=document.createElement('canvas'),ppc=60;cv2.width=Math.round(W*ppc);cv2.height=Math.round(H*ppc);
+    if(bg==='map'){prog('Chargement des photos…');tiles=await loadTiles(pagesBox(pl),(a,b)=>prog(`Chargement des photos… ${a}/${b}`));
+      if(!tiles||!tiles.length){toast('Photos indisponibles ('+(printTileErr||'?')+') : impression sur fond herbe');tiles=null;}}
+    const {jsPDF}=window.jspdf;
+    const pdf=new jsPDF({orientation:'landscape',unit:'cm',format:pFmt});
+    const name=S.name||'Circuit',scale=Math.round(100/pl.sc);
+    // --- page PLAN ---
+    {const W=pl.W,H=pl.H,ppc=60,cv2=document.createElement('canvas');cv2.width=Math.round(W*ppc);cv2.height=Math.round(H*ppc);
       const x=cv2.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv2.width,cv2.height);
-      const tw=pl.cols*(pl.wc-pl.ov)+pl.ov,th=pl.rows*(pl.hc-pl.ov)+pl.ov,avW=W-3,avH=H-6.4,f=Math.min(avW/tw,avH/th);
-      const ox=(W-tw*f)/2,oy=4.4;const k=pl.sc*f*ppc;
-      const T=(px,py)=>[(ox+(px-pl.bx.minx)*pl.sc*f)*ppc,(oy+(pl.bx.maxy-py)*pl.sc*f)*ppc];
-      renderAll(x,T,k,{cells:true,numbers:false,flag:Math.max(14,3.4*k),map:false});
-      x.font=`700 ${0.9*ppc}px 'Saira Semi Condensed',sans-serif`;x.fillStyle='#1d232b';x.textAlign='left';x.textBaseline='top';x.fillText(name,1.5*ppc,1*ppc);
-      x.font=`500 ${(pl.land?0.42:0.34)*ppc}px 'Saira Semi Condensed',sans-serif`;
-      x.fillText(`Plan d’assemblage — ${pl.used.length} pages ${pFmt.toUpperCase()} — échelle ≈ 1:${Math.round(100/pl.sc)} — cases ≈ 3 cm`,1.5*ppc,2.1*ppc);
-      x.fillText(`Coupez le bord gauche/haut de chaque page au ras du cadre, posez-la sur la bande claire de sa voisine`,1.5*ppc,2.75*ppc);
-      x.fillText(`(bord droit / bas) en alignant les croix rouges, puis scotchez au dos.`,1.5*ppc,3.3*ppc);
-      x.strokeStyle='#d7262e';x.lineWidth=2;x.fillStyle='#d7262e';x.textAlign='center';x.textBaseline='middle';x.font=`700 ${0.6*ppc}px 'Saira Semi Condensed',sans-serif`;
-      pl.used.forEach(u=>{const X0=(ox+u.c*(pl.wc-pl.ov)*f)*ppc,Y0=(oy+u.r*(pl.hc-pl.ov)*f)*ppc;x.strokeRect(X0,Y0,pl.wc*f*ppc,pl.hc*f*ppc);x.fillText(label(u.r,u.c),X0+pl.wc*f*ppc/2,Y0+pl.hc*f*ppc/2);});
-      pdf.addImage(cv2.toDataURL('image/jpeg',.9),'JPEG',0,0,W,H);}
-    // --- pages du circuit ---
-    for(let i=0;i<pl.used.length;i++){
-      const u=pl.used[i];prog(`Page ${i+1} / ${pl.used.length}…`);await new Promise(r=>setTimeout(r,0));
+      let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;pl.pages.forEach(pg=>pageCorners(pg).forEach(([a,b])=>{minx=Math.min(minx,a);maxx=Math.max(maxx,a);miny=Math.min(miny,b);maxy=Math.max(maxy,b);}));
+      const top=3.6,f=Math.min((W-2)/((maxx-minx)),(H-top-1)/((maxy-miny))),k=f*ppc,ox=(W-(maxx-minx)*f)/2,oy=top;
+      const T=(px,py)=>[(ox+(px-minx)*f)*ppc,(oy+(maxy-py)*f)*ppc];
+      if(tiles){x.save();x.beginPath();x.rect(0,oy*ppc,cv2.width,cv2.height-oy*ppc);x.clip();drawTiles(x,tiles,k,0,(ox-minx*f)*ppc,0,-k,(oy+maxy*f)*ppc);x.restore();x.setTransform(1,0,0,1,0,0);}
+      renderAll(x,T,k,{cells:true,numbers:false,flag:Math.max(12,3.4*k),map:false});
+      pl.pages.forEach((pg,i)=>{const C=pageCorners(pg).map(([a,b])=>T(a,b));x.beginPath();C.forEach((P,j)=>j?x.lineTo(P[0],P[1]):x.moveTo(P[0],P[1]));x.closePath();
+        x.fillStyle='rgba(215,38,46,.05)';x.fill();x.strokeStyle='#d7262e';x.lineWidth=2;x.stroke();});
+      pl.pages.forEach((pg,i)=>{const P=T(pg.cx,pg.cy),rad=Math.max(14,Math.min(30,pg.hh*k*.35));
+        x.beginPath();x.arc(P[0],P[1],rad,0,7);x.fillStyle='rgba(245,196,0,.95)';x.fill();x.lineWidth=2;x.strokeStyle='#1b1b1b';x.stroke();
+        x.fillStyle='#1b1b1b';x.textAlign='center';x.textBaseline='middle';x.font=`800 ${rad*1.1}px 'Saira Semi Condensed',sans-serif`;x.fillText(i+1,P[0],P[1]+rad*.05);});
+      x.fillStyle='#1d232b';x.textAlign='left';x.textBaseline='top';x.font=`700 ${.9*ppc}px 'Saira Semi Condensed',sans-serif`;x.fillText(name,1*ppc,.8*ppc);
+      x.font=`500 ${.4*ppc}px 'Saira Semi Condensed',sans-serif`;
+      x.fillText(`PLAN D’ASSEMBLAGE — ${N} feuilles ${pFmt.toUpperCase()} — échelle ≈ 1:${scale} — cases ≈ 3 cm`,1*ppc,1.95*ppc);
+      x.fillText(`Coupez chaque feuille au ras de son cadre, puis posez-la sur ses voisines en faisant coïncider son bord avec le pointillé qui porte son numéro.`,1*ppc,2.55*ppc);
+      pdf.addImage(cv2.toDataURL('image/jpeg',.9),'JPEG',0,0,W,H);pdf.setFontSize(11);pdf.setTextColor(40);pdf.text('PLAN',W-pl.m,H-.3,{align:'right'});}
+    // --- feuilles ---
+    for(let i=0;i<N;i++){
+      const pg=pl.pages[i];prog(`Feuille ${i+1} / ${N}…`);await new Promise(r=>setTimeout(r,0));
       const cvp=document.createElement('canvas');cvp.width=Math.round(pl.wc*DPC);cvp.height=Math.round(pl.hc*DPC);
-      const x=cvp.getContext('2d'),k=pl.sc*DPC,T=(px,py)=>[(px-u.x0)*k,(u.y1-py)*k];
-      x.fillStyle=bg==='white'?'#fff':'#4f8a3c';x.fillRect(0,0,cvp.width,cvp.height);
-      if(tiles)tiles.forEach(t=>{const A=T(t.lx,t.ly),sz=t.lw*k;if(A[0]>cvp.width||A[1]>cvp.height||A[0]+sz<0||A[1]+sz<0)return;x.drawImage(t.img,A[0],A[1],sz+1,sz+1);});
+      const x=cvp.getContext('2d'),k=pl.sc*DPC,co=Math.cos(pg.th),si=Math.sin(pg.th),Wp=cvp.width,Hp=cvp.height;
+      const A=k*co,B=k*si,E=Wp/2-k*(pg.cx*co+pg.cy*si),C2=k*si,D=-k*co,F=Hp/2+k*(pg.cy*co-pg.cx*si);
+      const T=(px,py)=>[A*px+B*py+E,C2*px+D*py+F];
+      x.fillStyle=bg==='white'?'#fff':'#4f8a3c';x.fillRect(0,0,Wp,Hp);
+      if(tiles)drawTiles(x,tiles,A,B,E,C2,D,F);
       renderAll(x,T,k,{cells:true,numbers,flag:.8*DPC,map:false});
-      // bandes de recouvrement (zone à recouvrir par la page voisine) + croix de repérage
-      const ovp=pl.ov*DPC;x.save();x.fillStyle='rgba(255,255,255,.28)';
-      const right=pl.used.some(v=>v.r===u.r&&v.c===u.c+1),bottom=pl.used.some(v=>v.r===u.r+1&&v.c===u.c);
-      if(right)x.fillRect(cvp.width-ovp,0,ovp,cvp.height);if(bottom)x.fillRect(0,cvp.height-ovp,cvp.width,ovp);x.restore();
-      x.strokeStyle='#d7262e';x.lineWidth=2;x.setLineDash([10,8]);x.beginPath();
-      if(right){x.moveTo(cvp.width-ovp,0);x.lineTo(cvp.width-ovp,cvp.height);}if(bottom){x.moveTo(0,cvp.height-ovp);x.lineTo(cvp.width,cvp.height-ovp);}x.stroke();x.setLineDash([]);
-      const cross=(cx,cy)=>{x.beginPath();x.moveTo(cx-18,cy);x.lineTo(cx+18,cy);x.moveTo(cx,cy-18);x.lineTo(cx,cy+18);x.lineWidth=3;x.strokeStyle='#fff';x.stroke();x.lineWidth=1.5;x.strokeStyle='#d7262e';x.stroke();};
-      [ovp/2,cvp.height/2,cvp.height-ovp/2].forEach(yy=>{cross(ovp/2,yy);cross(cvp.width-ovp/2,yy);});
-      [cvp.width/2].forEach(xx=>{cross(xx,ovp/2);cross(xx,cvp.height-ovp/2);});
-      // étiquette de page
-      x.fillStyle='rgba(29,35,43,.85)';x.fillRect(ovp+6,ovp+6,190,58);x.fillStyle='#f5c400';x.font="800 40px 'Saira Semi Condensed',sans-serif";x.textAlign='left';x.textBaseline='middle';
-      x.fillText(label(u.r,u.c),ovp+16,ovp+36);x.fillStyle='#fff';x.font="500 16px 'Saira Semi Condensed',sans-serif";x.fillText(name.slice(0,22),ovp+80,ovp+36);
-      if(i>0||true)pdf.addPage(pFmt,orient);
+      // pointillés légers : où viennent se poser les feuilles voisines
+      pl.pages.forEach((q,j)=>{if(j===i)return;const Cq=pageCorners(q);
+        const ins=Cq.some(([a,b])=>pl.inPage(pg,a,b))||pageCorners(pg).some(([a,b])=>pl.inPage(q,a,b));if(!ins)return;
+        const P=Cq.map(([a,b])=>T(a,b));x.save();x.setLineDash([14,10]);x.lineWidth=2.5;x.strokeStyle='rgba(255,255,255,.75)';
+        x.beginPath();P.forEach((Q,n)=>n?x.lineTo(Q[0],Q[1]):x.moveTo(Q[0],Q[1]));x.closePath();x.stroke();x.restore();
+        // étiquette du voisin, ramenée dans la feuille
+        const c=T(q.cx,q.cy);let lx=Math.max(40,Math.min(Wp-40,c[0])),ly=Math.max(40,Math.min(Hp-40,c[1]));
+        x.beginPath();x.arc(lx,ly,22,0,7);x.fillStyle='rgba(255,255,255,.85)';x.fill();x.fillStyle='#1d232b';x.font="800 24px 'Saira Semi Condensed',sans-serif";x.textAlign='center';x.textBaseline='middle';x.fillText(j+1,lx,ly+1);});
+      // cartouche
+      x.fillStyle='rgba(29,35,43,.88)';x.fillRect(10,Hp-74,200,64);x.strokeStyle='#f5c400';x.lineWidth=2;x.strokeRect(10,Hp-74,200,64);
+      x.fillStyle='#f5c400';x.font="800 48px 'Saira Semi Condensed',sans-serif";x.textAlign='left';x.textBaseline='middle';x.fillText(i+1,22,Hp-42);
+      x.fillStyle='#fff';x.font="600 15px 'Saira Semi Condensed',sans-serif";x.fillText(`/ ${N}`,22+x.measureText(String(i+1)).width*3.2,Hp-56);x.fillText(name.slice(0,18),80,Hp-30);
+      pdf.addPage(pFmt,'landscape');
       pdf.addImage(cvp.toDataURL('image/jpeg',.88),'JPEG',pl.m,pl.m,pl.wc,pl.hc);
-      // trait de coupe autour de la zone imprimée
       pdf.setDrawColor(150);pdf.setLineWidth(.01);pdf.rect(pl.m,pl.m,pl.wc,pl.hc);
-      pdf.setFontSize(7);pdf.setTextColor(120);pdf.text(`${name} — page ${label(u.r,u.c)} — ${i+1}/${pl.used.length} — échelle ≈ 1:${Math.round(100/pl.sc)}`,pl.m,pl.H-.35);
+      pdf.setFontSize(7);pdf.setTextColor(120);pdf.text(`${name} — feuille ${i+1} / ${N} — échelle ≈ 1:${scale}`,pl.m,pl.H-.35);
+      pdf.setFontSize(11);pdf.setTextColor(40);pdf.text(`${i+1}`,pl.W-pl.m,pl.H-.3,{align:'right'});
     }
     prog('Enregistrement du PDF…');
     pdf.save(fname(`_${pFmt.toUpperCase()}.pdf`));
-    prog(`Carnet prêt : ${pl.used.length} pages + le plan d’assemblage.`);
+    prog(`Carnet prêt : ${N} feuilles + le plan d’assemblage.`);
   }catch(err){console.error(err);prog('Erreur : '+(err&&err.message||err));
-    if(String(err).includes('tainted')||String(err).includes('Tainted'))toast('Le fond de carte ne peut pas être imprimé ici : choisis « Herbe »');}
+    if(String(err).toLowerCase().includes('taint'))toast('Le fond de carte ne peut pas être imprimé ici : choisis « Herbe »');}
   finally{btn.disabled=false;}
 }
 $('pGo').onclick=printBooklet;
