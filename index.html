@@ -478,7 +478,7 @@ function build(){
     const len=S.closed?mod(s2-s1,G.total):s2-s1;
     const a=at(s1),b=at(s1+len);let turn=a.tx*b.ty-a.ty*b.tx;
     if(Math.abs(turn)<.02){const u=at(s1+len*.35),v=at(s1+len*.65);turn=u.tx*v.ty-u.ty*v.tx;}
-    return {s1,len,stops:c.stops,name:c.name||'',turn};
+    return {s1,len,stops:c.stops,name:c.name||'',turn,badge:c.badge||null};
   });
   buildRuns();
   // numéro de chaque case dans son virage (voie + rang) -> flèche choisie ou flèche par défaut
@@ -958,10 +958,12 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
     let turn=p1.tx*p2.ty-p1.ty*p2.tx;
     if(Math.abs(turn)<.02){const a=at(z.s1+z.len*.35),b=at(z.s1+z.len*.65);turn=a.tx*b.ty-a.ty*b.tx;}
     const so=turn>0?-1:1,E=lat(pm,.5*so),M=lat(pm,0);let ux=E[0]-M[0],uy=E[1]-M[1];const ul=hyp(ux,uy)||1;ux/=ul;uy/=ul;
-    const A=T(E[0]+ux*1.8,E[1]+uy*1.8),A2=T(E[0]+ux*2.8,E[1]+uy*2.8),al=hyp(A2[0]-A[0],A2[1]-A[1])||1,dx=(A2[0]-A[0])/al,dy=(A2[1]-A[1])/al,H=o.flag,len=H*1.4,C=[A[0]+dx*len,A[1]+dy*len];
+    const Am=[E[0]+ux*1.8,E[1]+uy*1.8],A=T(Am[0],Am[1]),A2=T(E[0]+ux*2.8,E[1]+uy*2.8),al=hyp(A2[0]-A[0],A2[1]-A[1])||1;let dx=(A2[0]-A[0])/al,dy=(A2[1]-A[1])/al;const H=o.flag,len=H*1.4;
+    let C=[A[0]+dx*len,A[1]+dy*len];
+    if(z.badge){C=T(Am[0]+z.badge.x,Am[1]+z.badge.y);dx=C[0]>=A[0]?1:-1;}
     c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(C[0],C[1]);c.lineWidth=Math.max(2,H*.1);c.strokeStyle='#1b1b1b';c.lineCap='round';c.stroke();c.lineCap='butt';
     const bb=drawBadge(c,C,dx,H,z,o.map&&ci===selCorner&&pi===S.active);
-    if(o.map)flagBoxes.push({p:pi,ci,...bb});
+    if(o.map)flagBoxes.push({p:pi,ci,...bb,am:Am,cx:C[0],cy:C[1]});
   });
 }
 function visibleHandles(){
@@ -1048,6 +1050,7 @@ function renderEdit(c,v){
 function hitAnchor(X,Y){const v=view();if(!v)return -1;for(let i=S.anchors.length-1;i>=0;i--){const a=S.anchors[i],P=v.T(a.x,a.y);if(hyp(P[0]-X,P[1]-Y)<8)return i;}return -1;}
 function hitHandle(X,Y){const v=view();if(!v)return null;let r=null;visibleHandles().forEach(i=>{const a=S.anchors[i];['hi','ho'].forEach(sd=>{const h=a[sd];if(hyp(h.x,h.y)<1e-3)return;const H=v.T(a.x+h.x,a.y+h.y);if(hyp(H[0]-X,H[1]-Y)<7)r={i,sd};});});return r;}
 function hitGrip(X,Y){if(selSeg<0||selSeg>=G.segs||G.pts.length<2)return 0;const v=view(),p=at(gToS(selSeg+.5));for(const sg of [1,-1]){const P=v.T(p.x+p.nx*p.w/2*sg,p.y+p.ny*p.w/2*sg);if(hyp(P[0]-X,P[1]-Y)<8)return sg;}return 0;}
+function startBadgeDrag(ci,X,Y){const fb=flagBoxes.find(f=>f.p===S.active&&f.ci===ci);if(!fb)return;snapshot();drag={type:'badge',ci,X0:X,Y0:Y,cx:fb.cx,cy:fb.cy,am:fb.am};}
 function hitFlag(X,Y){for(const f of flagBoxes)if(f.p===S.active&&X>=f.x0&&X<=f.x1&&Y>=f.y0&&Y<=f.y1)return f.ci;return -1;}
 function onTrack(np){const v=view();return !!(np&&v&&np.d<np.p.w*v.k/2+8);}
 function nearestPath(X,Y,rng){ // rng : {s0,span} pour ne chercher que sur un passage précis
@@ -1222,12 +1225,12 @@ function editDown(X,Y,e){
   selSeg=-1;
   const h=hitHandle(X,Y); if(h){snapshot();drag={type:'handle',...h,alt:e.altKey};return;}
   const ai=hitAnchor(X,Y); if(ai>=0){snapshot();sel=ai;selCorner=-1;drag=e.altKey?{type:'pull',i:ai}:{type:'anchor',i:ai,ox:x-A[ai].x,oy:y-A[ai].y};return;}
-  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;return;}
+  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;startBadgeDrag(f,X,Y);return;}
   sel=-1;selCorner=-1;
   const np=nearestPath(X,Y);if(onTrack(np))selSeg=Math.min(G.segs-1,Math.floor(np.g));
 }
 function cornerDown(X,Y){
-  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;pendingCorner=null;return;}
+  const f=hitFlag(X,Y); if(f>=0){selCorner=f;sel=-1;pendingCorner=null;startBadgeDrag(f,X,Y);return;}
   const np=nearestPath(X,Y); if(!onTrack(np)){pendingCorner=null;return;}
   if(pendingCorner===null){pendingCorner=np.g;selCorner=-1;return;}
   let g1=pendingCorner,g2=np.g; pendingCorner=null;
@@ -1352,6 +1355,7 @@ cv.addEventListener('pointermove',e=>{
       if(drag.alt||e.altKey)a.sym=false;
       else if(a.sym){const h=a[drag.sd],hl=hyp(h.x,h.y)||1,ol=hyp(a[other].x,a[other].y)||hl;a[other]={x:-h.x/hl*ol,y:-h.y/hl*ol};}
     }
+    else if(drag.type==='badge'){const [bx,by]=v.inv(drag.cx+X-drag.X0,drag.cy+Y-drag.Y0);S.corners[drag.ci].badge={x:bx-drag.am[0],y:by-drag.am[1]};}
     else if(drag.type==='grip'){const p=at(gToS(drag.seg+.5)),nl=Math.max(1,Math.min(6,Math.round(2*Math.abs((x-p.x)*p.nx+(y-p.y)*p.ny)/S.laneW)));if(nl!==segLanes(drag.seg)){S.anchors[drag.seg].lanes=nl;selSeg=drag.seg;}selSeg=drag.seg;}
     rebuild(false);
   }else cursorFor(X,Y);
@@ -1475,10 +1479,12 @@ function updPanel(){
     body.innerHTML=`<div class="row"><span class="l">Arrêts</span><div class="seg" id="stops" style="flex:1">${[1,2,3,4].map(n=>`<button data-n="${n}" class="${n===c.stops?'on':''}">${n}</button>`).join('')}</div></div>
       <div class="row"><span class="l">Nom</span><input type="text" id="cName" value="${(c.name||'').replace(/"/g,'&quot;')}" placeholder="ex. L’Épingle" style="flex:1;min-width:0"></div>
       <p class="hint">Zone de ${z?Math.round(z.len):0} m : ${G.cells.filter(x=>x.corner===selCorner).length} cases.</p>
-      <div class="btns" style="margin-top:8px"><button class="b" id="delC">Supprimer le virage</button></div>`;
+      <p class="hint">Glisse la pastille sur la carte pour la déplacer.</p>
+      <div class="btns" style="margin-top:8px"><button class="b" id="resB" ${c.badge?'':'disabled'}>Replacer la pastille</button><button class="b" id="delC">Supprimer le virage</button></div>`;
     body.querySelectorAll('#stops button').forEach(b=>b.onclick=()=>{snapshot();c.stops=+b.dataset.n;rebuild();});
     $('cName').addEventListener('focus',snapshot);
     $('cName').oninput=e=>{c.name=e.target.value;build();draw();scheduleSave();};
+    $('resB').onclick=()=>{snapshot();delete c.badge;rebuild();};
     $('delC').onclick=()=>{snapshot();S.corners.splice(selCorner,1);selCorner=-1;rebuild();};
   }else if(selSeg>=0&&selSeg<G.segs){
     const i=selSeg,A=S.anchors,a=A[i],b=A[(i+1)%A.length],cur=segLanes(i);
