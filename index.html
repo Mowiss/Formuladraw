@@ -771,6 +771,9 @@ function roadPolyWhere(c,T,pred){ // contour(s) des parties de route qui vérifi
 }
 function renderAll(c,T,k,o){
   const n=S.paths.length;
+  // ombre portée de la piste sur le décor
+  c.save();c.shadowColor='rgba(0,0,0,.7)';c.shadowBlur=Math.min(30,Math.max(6,1.6*k));c.shadowOffsetX=Math.min(14,Math.max(2,.6*k));c.shadowOffsetY=Math.min(20,Math.max(3,.9*k));
+  c.fillStyle='#c9ccd0';for(let p=0;p<n;p++)withPath(p,()=>{if(G.pts.length<2)return;c.beginPath();roadPoly(c,T);c.fill();});c.restore();
   ['kerb','edge','fill'].forEach(ph=>{for(let p=0;p<n;p++)withPath(p,()=>renderTrack(c,T,k,o,ph,p));});
   for(let p=0;p<n;p++)withPath(p,()=>{
     c.save();
