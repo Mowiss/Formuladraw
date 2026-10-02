@@ -1491,10 +1491,11 @@ $('bNew').onclick=clearAll;
 $('bClrC').onclick=()=>{if(!S.corners.length){toast('Aucun virage à supprimer');return;}snapshot();S.corners=[];selCorner=-1;rebuild();toast('Virages supprimés · Ctrl+Z pour revenir en arrière');};
 /* ---------- carnet d'impression ---------- */
 const PAPER={a4:[21,29.7],a3:[29.7,42],a2:[42,59.4],a1:[59.4,84.1],a0:[84.1,118.9]};
+function trackPts(){const P=[];Gs.forEach((g,p)=>{if(!g||g.pts.length<2)return;withPath(p,()=>{for(let sv=0;sv<=G.total;sv+=2){const q=at(sv),f=.5+1.2/q.w;P.push(lat(q,f),lat(q,-f));}});});return P;}
 /* tout le circuit tient-il sur une seule feuille de ce format ? (on cherche le meilleur angle) */
 function wholeFit(fmt,sc){
-  const m=.8,pad=1.2;let [W,H]=PAPER[fmt];if(W<H)[W,H]=[H,W];const Lm=(W-2*m-2*pad)/sc,Hm=(H-2*m-2*pad)/sc;
-  const P=[];Gs.forEach((g,p)=>{if(!g||g.pts.length<2)return;withPath(p,()=>{for(let sv=0;sv<=G.total;sv+=2){const q=at(sv),f=.5+1.6/q.w;P.push(lat(q,f),lat(q,-f));}});});
+  const m=.8,pad=.5;let [W,H]=PAPER[fmt];if(W<H)[W,H]=[H,W];const Lm=(W-2*m-2*pad)/sc,Hm=(H-2*m-2*pad)/sc;
+  const P=trackPts();
   if(!P.length)return null;let best=null;
   for(let a=0;a<180;a+=3){const t=a*Math.PI/180,c=Math.cos(t),si=Math.sin(t);let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
     P.forEach(([x,y])=>{const u=x*c+y*si,v=-x*si+y*c;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v);});
@@ -1509,7 +1510,7 @@ function trackBox(){let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
    (angle libre), la piste est centrée, et deux feuilles successives se recouvrent de « ov » cm. */
 function printPlan(){
   const bx=trackBox();if(!bx)return null;
-  const sc=1.5/S.laneW,ov=+$('pOv').value,m=.8,pad=1.2; // une voie = 15 mm sur le papier
+  const sc=1.5/S.laneW,ov=+$('pOv').value,m=.8,pad=.5; // une voie = 15 mm sur le papier
   let [W,H]=PAPER[pFmt];if(W<H)[W,H]=[H,W]; // feuille en paysage, le long de la piste
   const wc=W-2*m,hc=H-2*m,Lm=(wc-2*pad)/sc,Hm=(hc-2*pad)/sc,ovm=ov/sc;
   const pages=[];
@@ -1543,6 +1544,18 @@ function printPlan(){
       }
     });
   });
+  // autre solution : un quadrillage régulier, tourné au meilleur angle (souvent moins de feuilles et mieux alignées)
+  {const P=trackPts(),sw=(wc-ov)/sc,shh=(hc-ov)/sc,ovm2=ov/sc;let best=null;
+    for(let a=0;a<180;a+=2){const t=a*Math.PI/180,c=Math.cos(t),si=Math.sin(t);let u0=1e9,u1=-1e9,v0=1e9,v1=-1e9;
+      const UV=P.map(([x,y])=>{const u=x*c+y*si,v=-x*si+y*c;u0=Math.min(u0,u);u1=Math.max(u1,u);v0=Math.min(v0,v);v1=Math.max(v1,v);return [u,v];});
+      const cols=Math.max(1,Math.ceil((u1-u0+2*pad/sc-ovm2)/sw)),rows=Math.max(1,Math.ceil((v1-v0+2*pad/sc-ovm2)/shh));
+      const us=(u0+u1)/2-(cols*sw+ovm2)/2,vs=(v0+v1)/2+(rows*shh+ovm2)/2,used=[];
+      for(let r=0;r<rows;r++)for(let k=0;k<cols;k++){const a0=us+k*sw,a1=a0+wc/sc,b1=vs-r*shh,b0=b1-hc/sc;
+        if(UV.some(([u,v])=>u>=a0&&u<=a1&&v>=b0&&v<=b1))used.push({u:(a0+a1)/2,v:(b0+b1)/2});}
+      if(!best||used.length<best.used.length||(used.length===best.used.length&&cols*rows<best.n)){best={t,used,n:cols*rows};}}
+    if(best&&best.used.length<=pages.length){const c=Math.cos(best.t),si=Math.sin(best.t);
+      const gp=best.used.map(q=>({p:0,th:best.t,cx:q.u*c-q.v*si,cy:q.u*si+q.v*c,hw:wc/2/sc,hh:hc/2/sc}));
+      return {sc,ov,m,W,H,wc,hc,pages:gp,bx,inPage,single:gp.length===1};}}
   return {sc,ov,m,W,H,wc,hc,pages,bx,inPage,single:false};
 }
 function updPrintInfo(){
