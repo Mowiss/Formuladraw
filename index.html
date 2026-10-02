@@ -546,6 +546,16 @@ function filletCorners(raw,segs,n){
   return out;
 }
 function L0c(cl){const a=at(cl.sa),b=at(cl.sb),f=(cl.lo+cl.hi)/2,pa=lat(a,f),pb=lat(b,f);return hyp(pb[0]-pa[0],pb[1]-pa[1]);}
+function badgeGeom(z,T,o){
+  const pm=at(z.s1+z.len/2),p1=at(z.s1),p2=at(z.s1+z.len);
+  let turn=p1.tx*p2.ty-p1.ty*p2.tx;
+  if(Math.abs(turn)<.02){const a=at(z.s1+z.len*.35),b=at(z.s1+z.len*.65);turn=a.tx*b.ty-a.ty*b.tx;}
+  const so=turn>0?-1:1,E=lat(pm,.5*so),M=lat(pm,0);let ux=E[0]-M[0],uy=E[1]-M[1];const ul=hyp(ux,uy)||1;ux/=ul;uy/=ul;
+  const Am=[E[0]+ux*1.8,E[1]+uy*1.8],A=T(Am[0],Am[1]),A2=T(E[0]+ux*2.8,E[1]+uy*2.8),al=hyp(A2[0]-A[0],A2[1]-A[1])||1;let dx=(A2[0]-A[0])/al,dy=(A2[1]-A[1])/al;const len=o.flag*1.4;
+  let C=[A[0]+dx*len,A[1]+dy*len];
+  if(z.badge){C=T(Am[0]+z.badge.x,Am[1]+z.badge.y);dx=C[0]>=A[0]?1:-1;}
+  return {M:T(M[0],M[1]),Am,C,dx};
+}
 function drawBadge(c,C,dx,H,z,selected){
   const F="'Saira Semi Condensed',sans-serif",R=H*.66,sw=H*.85,st=H*.55,pad=H*.45;
   const name=(z.name||'').toUpperCase();c.font=`800 ${H*.52}px ${F}`;const tw=name?c.measureText(name).width:0;
@@ -771,6 +781,9 @@ function roadPolyWhere(c,T,pred){ // contour(s) des parties de route qui vérifi
 }
 function renderAll(c,T,k,o){
   const n=S.paths.length;
+  // tiges des pastilles : du milieu de la voie jusqu'à la pastille, sous la piste
+  for(let p=0;p<n;p++)withPath(p,()=>{if(G.pts.length<2)return;G.cz.forEach(z=>{const bg=badgeGeom(z,T,o);
+    c.beginPath();c.moveTo(bg.M[0],bg.M[1]);c.lineTo(bg.C[0],bg.C[1]);c.lineWidth=Math.max(2,o.flag*.1);c.strokeStyle='#1b1b1b';c.lineCap='round';c.stroke();c.lineCap='butt';});});
   // ombre portée de la piste sur le décor
   c.save();c.shadowColor='rgba(0,0,0,.7)';c.shadowBlur=Math.min(30,Math.max(6,1.6*k));c.shadowOffsetX=Math.min(14,Math.max(2,.6*k));c.shadowOffsetY=Math.min(20,Math.max(3,.9*k));
   c.fillStyle='#c9ccd0';for(let p=0;p<n;p++)withPath(p,()=>{if(G.pts.length<2)return;c.beginPath();roadPoly(c,T);c.fill();});c.restore();
@@ -956,17 +969,11 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
     });
   }
   // pastilles de virage : arrêts (jaune) · trajectoire courte (vert) / longue (rouge) · nom
+  // (la tige est dessinée avant la piste, depuis le milieu de la voie : elle passe « sous » la piste)
   G.cz.forEach((z,ci)=>{
-    const pm=at(z.s1+z.len/2),p1=at(z.s1),p2=at(z.s1+z.len);
-    let turn=p1.tx*p2.ty-p1.ty*p2.tx;
-    if(Math.abs(turn)<.02){const a=at(z.s1+z.len*.35),b=at(z.s1+z.len*.65);turn=a.tx*b.ty-a.ty*b.tx;}
-    const so=turn>0?-1:1,E=lat(pm,.5*so),M=lat(pm,0);let ux=E[0]-M[0],uy=E[1]-M[1];const ul=hyp(ux,uy)||1;ux/=ul;uy/=ul;
-    const Am=[E[0]+ux*1.8,E[1]+uy*1.8],A=T(Am[0],Am[1]),A2=T(E[0]+ux*2.8,E[1]+uy*2.8),al=hyp(A2[0]-A[0],A2[1]-A[1])||1;let dx=(A2[0]-A[0])/al,dy=(A2[1]-A[1])/al;const H=o.flag,len=H*1.4;
-    let C=[A[0]+dx*len,A[1]+dy*len];
-    if(z.badge){C=T(Am[0]+z.badge.x,Am[1]+z.badge.y);dx=C[0]>=A[0]?1:-1;}
-    c.beginPath();c.moveTo(A[0],A[1]);c.lineTo(C[0],C[1]);c.lineWidth=Math.max(2,H*.1);c.strokeStyle='#1b1b1b';c.lineCap='round';c.stroke();c.lineCap='butt';
-    const bb=drawBadge(c,C,dx,H,z,o.map&&ci===selCorner&&pi===S.active);
-    if(o.map)flagBoxes.push({p:pi,ci,...bb,am:Am,cx:C[0],cy:C[1]});
+    const bg=badgeGeom(z,T,o),H=o.flag;
+    const bb=drawBadge(c,bg.C,bg.dx,H,z,o.map&&ci===selCorner&&pi===S.active);
+    if(o.map)flagBoxes.push({p:pi,ci,...bb,am:bg.Am,cx:bg.C[0],cy:bg.C[1]});
   });
 }
 function visibleHandles(){
