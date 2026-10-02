@@ -110,8 +110,9 @@ label.ck input{accent-color:var(--flag);width:16px;height:16px}
       <div class="row"><span class="l">Format</span><div class="seg" id="pFmt" style="flex:1"><button data-v="a4" class="on">A4</button><button data-v="a3">A3</button><button data-v="a2">A2</button><button data-v="a1">A1</button><button data-v="a0">A0</button></div></div>
       <div class="row"><span class="l">Décor</span><select id="pBg" style="flex:1"><option value="map">Fond de carte actuel</option><option value="grass">Herbe</option><option value="white">Blanc (économie d'encre)</option></select></div>
       <div class="row"><span class="l">Marge d'assemblage</span><select id="pOv" style="flex:1"><option value="1">1 cm</option><option value="1.5" selected>1,5 cm</option><option value="2">2 cm</option></select></div>
-      <label class="ck"><input type="checkbox" id="pNum"> Numéros de case</label>
+      <div class="row"><span class="l">Numéros de case</span><select id="pNum" style="flex:1"><option value="none">Aucun</option><option value="all">Tous</option><option value="5">De 5 en 5</option><option value="10">De 10 en 10</option></select></div>
       <div class="stats" id="pInfo" style="margin:10px 0"></div>
+      <div class="btns" style="margin-bottom:8px"><button class="b" id="pFitT">Réduire le tracé pour tenir sur 1 feuille</button><button class="b" id="pFit">Changer l’échelle pour tenir sur 1 feuille</button></div>
       <div class="btns"><button class="b pri" id="pGo">Générer le PDF</button><button class="b" id="pCancel">Fermer</button></div>
       <p class="hint" id="pProg"></p>
     </div>
@@ -133,9 +134,13 @@ label.ck input{accent-color:var(--flag);width:16px;height:16px}
       <h3>Tracé</h3>
       <div class="row"><span class="l">Cases de large (défaut)</span><div class="seg" id="lanes" style="flex:1"></div></div>
       <div class="btns" style="margin:4px 0 10px"><button class="b" id="bAllW">Appliquer à tout le tracé</button></div>
-      <div class="row"><span class="l">Largeur de case</span><input type="range" id="laneW" min="2" max="10" step="0.1"><span class="v" id="laneWv"></span></div>
-      <div class="row"><span class="l">Longueur de case</span><input type="range" id="cellLen" min="3" max="25" step="0.5"><span class="v" id="cellLenv"></span></div>
-      <label class="ck"><input type="checkbox" id="lockProp"> Proportions du jeu (case 15 × 25 mm)</label>
+      <div class="row"><span class="l">Largeur de case</span><input type="range" id="laneW" min="2" max="10" step="0.05"><span class="v" id="laneWv"></span></div>
+      <div class="row"><span class="l">Longueur de case</span><input type="range" id="cellLen" min="3" max="25" step="0.05"><span class="v" id="cellLenv"></span></div>
+      <label class="ck"><input type="checkbox" id="lockProp"> Cases du jeu (15 × 25 mm imprimées)</label>
+      <div class="row"><span class="l">Échelle du plateau</span><input type="range" id="caseScale" min="1" max="12" step="0.05"><span class="v" id="caseScalev"></span></div>
+      <div class="row"><span class="l">Taille du tracé</span><div class="btns" style="flex:1"><button class="b" id="tSm">− 10 %</button><button class="b" id="tBg">+ 10 %</button></div></div>
+      <p class="hint" style="margin:0 0 6px">Agrandit ou réduit le dessin du circuit (forme conservée) sans toucher aux cases : on change seulement leur nombre. Le tracé ne colle alors plus au fond de carte.</p>
+      <p class="hint" style="margin:0 0 6px">1:250 = cases à taille réelle de route. Plus l'échelle est petite (1:800, 1:1500…), plus chaque case couvre de terrain : moins de cases, moins de pages.</p>
       <div class="btns"><button class="b" id="bLoop">Boucler le circuit</button><button class="b" id="bRev">Inverser le sens</button><button class="b" id="bFit">Centrer</button></div>
       <div class="btns" style="margin-top:6px"><button class="b" id="bNewR">Nouvelle route</button><button class="b danger" id="bDelR">Supprimer cette route</button><button class="b danger" id="bClrC">Supprimer tous les virages</button></div>
     </div>
@@ -146,7 +151,7 @@ label.ck input{accent-color:var(--flag);width:16px;height:16px}
       <div class="row"><span class="l">Opacité du fond</span><input type="range" id="baseOp" min="0" max="1" step="0.05" value="1"><span class="v" id="baseOpv">100 %</span></div>
       <div class="row"><span class="l">Opacité du tracé</span><input type="range" id="trkOp" min="0.1" max="1" step="0.05" value="1"><span class="v" id="trkOpv">100 %</span></div>
       <label class="ck"><input type="checkbox" id="oCells" checked> Cases</label>
-      <label class="ck"><input type="checkbox" id="oNum"> Numéros de case (1re voie)</label>
+      <div class="row"><span class="l">Numéros de case</span><select id="oNum" style="flex:1"><option value="none">Aucun</option><option value="all">Tous</option><option value="5">De 5 en 5</option><option value="10">De 10 en 10</option></select></div>
       <label class="ck"><input type="checkbox" id="oHandles"> Toutes les poignées</label>
     </div>
 
@@ -178,8 +183,9 @@ const hyp=(x,y)=>Math.hypot(x,y);
 const bz=(a,b,c,d,t)=>{const u=1-t;return u*u*u*a+3*u*u*t*b+3*u*t*t*c+t*t*t*d};
 
 /* ---------- état ---------- */
-const PROP=25/15;
-function applyProp(o){if(o.lockProp!==false)o.cellLen=Math.round(o.laneW*PROP*10)/10;return o;}
+/* case du jeu : 15 × 25 mm au 1:250 → 3,75 m × 6,25 m sur le terrain */
+const CASE_W=3.75,CASE_L=6.25;
+function applyProp(o){if(o.lockProp!==false){const f=o.caseScale>0?o.caseScale:1;o.laneW=Math.round(CASE_W*f*100)/100;o.cellLen=Math.round(CASE_L*f*100)/100;}return o;}
 function migrate(d){if(!(d.laneW>0)){d.laneW=Math.round(((d.defW||14)/(d.lanes||3))*10)/10;}delete d.defW;return applyProp(d);}
 const newPath=()=>({anchors:[],closed:false,corners:[],start:0});
 /* S.anchors / closed / corners / start désignent la route active (S.paths[S.active]) */
@@ -191,8 +197,8 @@ function wrap(o){
   if(!(o.startPath>=0&&o.startPath<o.paths.length))o.startPath=0;
   return o;
 }
-function blank(){return wrap({name:'Nouveau circuit',origin:null,paths:[newPath()],active:0,startPath:0,bridges:{},lanes:3,cellLen:7.8,laneW:4.7,lockProp:true,view:null});}
-function load(d){const o=blank(),keep=['name','origin','lanes','cellLen','laneW','defW','view','bridges','lockProp'];keep.forEach(k=>{if(d[k]!==undefined)o[k]=d[k];});
+function blank(){return wrap({name:'Nouveau circuit',origin:null,paths:[newPath()],active:0,startPath:0,bridges:{},lanes:3,cellLen:6.25,laneW:3.75,lockProp:true,caseScale:1,view:null});}
+function load(d){const o=blank(),keep=['name','origin','lanes','cellLen','laneW','defW','view','bridges','lockProp','caseScale'];keep.forEach(k=>{if(d[k]!==undefined)o[k]=d[k];});
   if(Array.isArray(d.paths)){o.paths=d.paths;o.active=d.active;o.startPath=d.startPath;}else o.paths=[{anchors:d.anchors||[],closed:!!d.closed,corners:d.corners||[],start:d.start||0}];
   return wrap(migrate(o));}
 let S=blank();
@@ -359,7 +365,7 @@ function markJunctionCells(){
   });
 }
 let tool='pen',sel=-1,selCorner=-1,pendingCorner=null,cutPending=null,redraw=null,selSeg=-1,drag=null,mouse=null,spacePan=false,flagBoxes=[];
-const opt={cells:true,numbers:false,handles:false};
+const opt={cells:true,numbers:'none',handles:false};
 const undoS=[],redoS=[];
 
 /* ---------- carte ---------- */
@@ -480,6 +486,17 @@ function build(){
     const byJ={};cs.forEach(cl=>{byJ[cl.j]=(byJ[cl.j]||0)+1;});const v=Object.values(byJ);
     z.cmin=v.length?Math.min(...v):0;z.cmax=v.length?Math.max(...v):0;
   });
+  {const pp=S.paths[S.active],T=G.total;
+    const lines=(pp.lines||(S.startPath===S.active?[S.start]:[])).map(g=>gToS(g)),s0=lines.length?lines[0]:0;
+    const rel=x=>S.closed?mod(x-s0,T):x;
+    const L0=G.cells.filter(c=>c.j===0).sort((a,b)=>rel(a.mid)-rel(b.mid));let n=0;
+    L0.forEach(cl=>{cl.cnum=0;
+      const hasLine=lines.some(ls=>{const d=S.closed?mod(ls-cl.sa,T):ls-cl.sa;return d>=-.01&&d<cl.sb-cl.sa-.01;});
+      if(cl.corner>=0){n=0;return;}
+      if(hasLine)n=0;
+      n++;cl.cnum=n;});
+    L0.forEach((cl,i)=>{const nx=L0[i+1];cl.clast=cl.cnum>0&&(!nx||nx.cnum<=1);});
+    G.numCells=L0;}
   const pa=S.paths[S.active].arrows||{};
   G.cells.forEach(cl=>{if(cl.corner>=0)return;cl.akey=cl.g1+'|'+cl.j+'|'+cl.rk;cl.arrow=pa[cl.akey]!=null?pa[cl.akey]:3;});
 }
@@ -853,11 +870,12 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
       c.stroke();
     });
     c.lineCap='butt';
-    if(o.numbers&&S.cellLen*k>=9){
-      const fs=Math.max(10,Math.min(16,S.cellLen*k*.35)),ln={cells:G.cells.filter(x=>x.j===0)};ln.cells.forEach((x,i)=>x.num=i+1);
+    if(o.numbers&&o.numbers!=='none'&&S.cellLen*k>=6){
+      const step=o.numbers==='all'?1:+o.numbers;
+      const fs=Math.max(9,Math.min(o.map?16:.55*S.laneW*k,S.cellLen*k*.4)),ln={cells:(G.numCells||[]).filter(cl=>cl.cnum>0&&!cl.sliver&&okS(cl.mid)&&(cl.cnum%step===0||cl.clast))};ln.cells.forEach(x=>x.num=x.cnum);
       c.font=`600 ${fs}px 'Saira Semi Condensed',sans-serif`; c.textAlign='center'; c.textBaseline='middle';
       c.lineWidth=3; c.strokeStyle='rgba(0,0,0,.75)'; c.fillStyle='#fff';
-      ln.cells.forEach(cl=>{const p=at(cl.mid),off=p.w/2+1.2+fs/k*.6,X=T(p.x-p.nx*off,p.y-p.ny*off);c.strokeText(cl.num,X[0],X[1]);c.fillText(cl.num,X[0],X[1]);});
+      ln.cells.forEach(cl=>{const p=at(cl.mid),m2=lat(p,-.5-(1.2+fs/k*.6)/p.w),X=T(m2[0],m2[1]);c.strokeText(cl.num,X[0],X[1]);c.fillText(cl.num,X[0],X[1]);});
     }
   }
     return;
@@ -904,6 +922,27 @@ const m=lat(p,sg*(.5+.55/p.w)),X=T(m[0],m[1]);pen?c.lineTo(X[0],X[1]):c.moveTo(X
     c.beginPath();if(li===0&&pi===S.startPath){c.moveTo(B[0]+dx*sz,B[1]+dy*sz);}c.lineTo(B[0]-dx*sz*.6-dy*sz*.7,B[1]-dy*sz*.6+dx*sz*.7);c.lineTo(B[0]-dx*sz*.6+dy*sz*.7,B[1]-dy*sz*.6-dx*sz*.7);c.closePath();
     if(li===0&&pi===S.startPath){c.fillStyle='#f5c400';c.fill();c.lineWidth=1.5;c.strokeStyle='#1b1b1b';c.stroke();}
   });
+  // grille de départ : les 10 cases les plus proches derrière la ligne de départ, numérotées 1 → 10
+  if(pi===S.startPath){
+    const s0=gToS((S.paths[pi].lines||[S.start])[0]),Tt=G.total,rel=x=>S.closed?mod(x-s0+Tt/2,Tt)-Tt/2:x-s0;
+    // grille en quinconce sur les 3 voies centrales, voie du milieu VIDE :
+    // voitures en alternance à gauche / à droite, 3 cases entre deux voitures d'une même file
+    const behind=G.cells.filter(cl=>!cl.sliver&&rel(cl.sb)<=.05&&rel(cl.sb)>-200);
+    const nlS=behind.length?behind[0].nl:S.lanes,j0=nlS>3?Math.floor((nlS-3)/2):0;
+    const ja=j0,jb=nlS>=3?j0+2:nlS-1;
+    const laneL=j=>behind.filter(cl=>cl.j===j).sort((a,b)=>rel(b.mid)-rel(a.mid));
+    const A=laneL(ja),B=ja===jb?[]:laneL(jb),grid=[];
+    for(let r=0;r<5;r++){const ca=A[r===0?1:3*r];if(ca)grid.push(ca); // la pole est reculée d'une case (pas sous la ligne)
+     const cb=B.length?B[3*r+2]:A[3*r+2];if(cb&&grid.length<10)grid.push(cb);}
+    grid.forEach((cl,i)=>{
+      const f1=cl.lo+(cl.hi-cl.lo)*.12,f2=cl.hi-(cl.hi-cl.lo)*.12,L=cl.sb-cl.sa,P=(u,f)=>{const m2=lat(at(cl.sa+L*u),f);return T(m2[0],m2[1]);};
+      // emplacement : trait avant + petits côtés (en U ouvert vers l'arrière)
+      const a=P(.55,f1),b=P(.92,f1),cc=P(.92,f2),d=P(.55,f2);
+      c.beginPath();c.moveTo(a[0],a[1]);c.lineTo(b[0],b[1]);c.lineTo(cc[0],cc[1]);c.lineTo(d[0],d[1]);c.strokeStyle='#fff';c.lineWidth=Math.max(1.5,.18*k);c.lineJoin='miter';c.stroke();
+      const ctr=P(.3,(cl.lo+cl.hi)/2),fs=Math.max(9,Math.min(o.map?18:.6*S.laneW*k,(cl.hi-cl.lo)*at(cl.mid).w*k*.55));
+      c.font=`800 ${fs}px 'Saira Semi Condensed',sans-serif`;c.textAlign='center';c.textBaseline='middle';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.6)';c.strokeText(i+1,ctr[0],ctr[1]);c.fillStyle='#fff';c.fillText(i+1,ctr[0],ctr[1]);
+    });
+  }
   // pastilles de virage : arrêts (jaune) · trajectoire courte (vert) / longue (rouge) · nom
   G.cz.forEach((z,ci)=>{
     const pm=at(z.s1+z.len/2),p1=at(z.s1),p2=at(z.s1+z.len);
@@ -1334,8 +1373,8 @@ function rebuild(full=true){buildAll();draw();if(full){updStats();updPanel();sch
 function syncUI(){
   $('name').value=S.name||'';
   $('lanes').querySelectorAll('button').forEach(b=>b.classList.toggle('on',+b.dataset.n===S.lanes));
-  $('laneW').value=S.laneW;$('laneWv').textContent=(+S.laneW).toFixed(1).replace('.',',')+' m';
-  $('cellLen').value=S.cellLen;$('cellLenv').textContent=String(S.cellLen).replace('.',',')+' m';$('lockProp').checked=S.lockProp!==false;$('cellLen').disabled=S.lockProp!==false;
+  $('laneW').value=S.laneW;$('laneWv').textContent=String(+S.laneW).replace('.',',')+' m';
+  $('cellLen').value=S.cellLen;$('cellLenv').textContent=String(S.cellLen).replace('.',',')+' m';$('lockProp').checked=S.lockProp!==false;$('cellLen').disabled=S.lockProp!==false;$('laneW').disabled=S.lockProp!==false;$('caseScale').value=S.caseScale||1;$('caseScale').disabled=S.lockProp===false;$('caseScalev').textContent='1:'+Math.round(250*(S.caseScale||1));
   $('bLoop').textContent=S.closed?'Ouvrir la boucle':'Boucler le circuit';
 }
 const lanesEl=$('lanes');
@@ -1343,6 +1382,15 @@ const lanesEl=$('lanes');
 $('name').oninput=e=>{S.name=e.target.value;scheduleSave();};
 $('laneW').addEventListener('pointerdown',snapshot);
 $('laneW').oninput=e=>{S.laneW=+e.target.value;$('laneWv').textContent=S.laneW.toFixed(1).replace('.',',')+' m';applyProp(S);syncUI();rebuild();};
+function scaleTrack(f){ // homothétie de toutes les routes autour du centre du circuit
+  let n=0,cx=0,cy=0;S.paths.forEach(pp=>pp.anchors.forEach(a=>{cx+=a.x;cy+=a.y;n++;}));if(!n)return;cx/=n;cy/=n;
+  S.paths.forEach(pp=>pp.anchors.forEach(a=>{a.x=cx+(a.x-cx)*f;a.y=cy+(a.y-cy)*f;a.hi={x:a.hi.x*f,y:a.hi.y*f};a.ho={x:a.ho.x*f,y:a.ho.y*f};}));
+}
+const lapCells=()=>{const g=Gs[S.startPath];return g&&g.numCells?g.numCells.length:0;};
+$('tSm').onclick=()=>{if(!S.anchors.length&&!S.paths.some(p=>p.anchors.length))return;snapshot();scaleTrack(1/1.1);rebuild();toast(`Tracé réduit · ${lapCells()} cases par tour (voie extérieure)`);};
+$('tBg').onclick=()=>{if(!S.paths.some(p=>p.anchors.length))return;snapshot();scaleTrack(1.1);rebuild();toast(`Tracé agrandi · ${lapCells()} cases par tour (voie extérieure)`);};
+$('caseScale').addEventListener('pointerdown',snapshot);
+$('caseScale').oninput=e=>{S.caseScale=+e.target.value;applyProp(S);syncUI();rebuild();};
 $('lockProp').onchange=e=>{snapshot();S.lockProp=e.target.checked;applyProp(S);syncUI();rebuild();};
 $('bAllW').onclick=()=>{if(!S.anchors.length)return;snapshot();S.anchors.forEach(a=>a.lanes=null);rebuild();toast(`Tout le tracé passe à ${S.lanes} case${S.lanes>1?'s':''} de large`);};
 $('cellLen').addEventListener('pointerdown',snapshot);
@@ -1356,7 +1404,7 @@ $('base').onchange=e=>{Object.values(layers).forEach(l=>map.removeLayer(l));base
 $('baseOp').oninput=e=>{const v=+e.target.value;Object.values(layers).forEach(l=>l.setOpacity(v));$('baseOpv').textContent=Math.round(v*100)+' %';};
 $('trkOp').oninput=e=>{cv.style.opacity=e.target.value;$('trkOpv').textContent=Math.round(e.target.value*100)+' %';};
 $('oCells').onchange=e=>{opt.cells=e.target.checked;draw();};
-$('oNum').onchange=e=>{opt.numbers=e.target.checked;draw();};
+$('oNum').onchange=e=>{opt.numbers=e.target.value;draw();};
 $('oHandles').onchange=e=>{opt.handles=e.target.checked;draw();};
 
 function updPanel(){
@@ -1501,9 +1549,9 @@ function updPrintInfo(){
   const pl=printPlan();if(!pl||!pl.pages.length){$('pInfo').innerHTML='<span>Trace d’abord un circuit.</span><b></b>';$('pGo').disabled=true;return;}
   $('pGo').disabled=false;
   const cw=(S.laneW*pl.sc).toFixed(1).replace('.',','),scale=Math.round(100/pl.sc);
-  $('pInfo').innerHTML=`<span>Échelle</span><b>≈ 1:${scale}</b><span>Taille d’une case</span><b>${Math.round(S.laneW*pl.sc*10)} × ${Math.round(S.cellLen*pl.sc*10)} mm</b><span>Feuilles</span><b>${pl.single?'1 seule feuille '+pFmt.toUpperCase()+' 🎉':pl.pages.length+' '+pFmt.toUpperCase()+' (+ plan)'}</b><span>Tient sur 1 feuille</span><b>${(['a4','a3','a2','a1','a0'].find(f=>wholeFit(f,pl.sc))||'').toUpperCase()||'au-delà de l’A0'}</b>`+(Math.abs(S.cellLen*pl.sc-2.5)>.1?`<span style='grid-column:1/-1'>Pour des cases de 15 × 25 mm, coche « Proportions du jeu » dans le panneau Tracé.</span>`:'')+`<span style='grid-column:1/-1'>Imprimer en « taille réelle / 100 % » (pas « ajuster à la page »). Une règle de 5 cm est imprimée sur chaque feuille pour vérifier.</span>`;
+  $('pInfo').innerHTML=`<span>Échelle</span><b>≈ 1:${scale}</b><span>Taille d’une case</span><b>${Math.round(S.laneW*pl.sc*10)} × ${Math.round(S.cellLen*pl.sc*10)} mm</b><span>Feuilles</span><b>${pl.single?'1 seule feuille '+pFmt.toUpperCase()+' 🎉':pl.pages.length+' '+pFmt.toUpperCase()+' (+ plan)'}</b><span>Tient sur 1 feuille</span><b>${(['a4','a3','a2','a1','a0'].find(f=>wholeFit(f,pl.sc))||'').toUpperCase()||'au-delà de l’A0'}</b>`+(Math.abs(S.cellLen*pl.sc-2.5)>.1?`<span style='grid-column:1/-1'>Pour des cases de 15 × 25 mm, coche « Cases du jeu » dans le panneau Tracé.</span>`:'')+`<span style='grid-column:1/-1'>Imprimer en « taille réelle / 100 % » (pas « ajuster à la page »). Une règle de 5 cm est imprimée sur chaque feuille pour vérifier.</span>`;
 }
-$('bPrint').onclick=()=>{$('printDlg').hidden=false;$('pProg').textContent='';$('pNum').checked=opt.numbers;updPrintInfo();};
+$('bPrint').onclick=()=>{$('printDlg').hidden=false;$('pProg').textContent='';$('pNum').value=opt.numbers;updPrintInfo();};
 $('pCancel').onclick=()=>{$('printDlg').hidden=true;};
 $('pFmt').querySelectorAll('button').forEach(b=>b.onclick=()=>{pFmt=b.dataset.v;$('pFmt').querySelectorAll('button').forEach(x=>x.classList.toggle('on',x===b));updPrintInfo();});
 $('pOv').onchange=updPrintInfo;
@@ -1553,7 +1601,7 @@ async function printBooklet(){
   if(!window.jspdf){toast('Le module PDF n’a pas pu se charger (connexion internet ?)');return;}
   const btn=$('pGo');btn.disabled=true;const prog=t=>{$('pProg').textContent=t;};
   try{
-    const DPC=Math.min(150/2.54,Math.sqrt(16e6/(pl.wc*pl.hc))),bg=$('pBg').value,numbers=$('pNum').checked,N=pl.pages.length;
+    const DPC=Math.min(150/2.54,Math.sqrt(16e6/(pl.wc*pl.hc))),bg=$('pBg').value,numbers=$('pNum').value,N=pl.pages.length;
     let tiles=null;
     if(bg==='map'){prog('Chargement des photos…');tiles=await loadTiles(pagesBox(pl),(a,b)=>prog(`Chargement des photos… ${a}/${b}`));
       if(!tiles||!tiles.length){toast('Photos indisponibles ('+(printTileErr||'?')+') : impression sur fond herbe');tiles=null;}}
@@ -1567,7 +1615,7 @@ async function printBooklet(){
       const top=3.6,f=Math.min((W-2)/((maxx-minx)),(H-top-1)/((maxy-miny))),k=f*ppc,ox=(W-(maxx-minx)*f)/2,oy=top;
       const T=(px,py)=>[(ox+(px-minx)*f)*ppc,(oy+(maxy-py)*f)*ppc];
       if(tiles){x.save();x.beginPath();x.rect(0,oy*ppc,cv2.width,cv2.height-oy*ppc);x.clip();drawTiles(x,tiles,k,0,(ox-minx*f)*ppc,0,-k,(oy+maxy*f)*ppc);x.restore();x.setTransform(1,0,0,1,0,0);}
-      renderAll(x,T,k,{cells:true,numbers:false,flag:Math.max(12,3.4*k),map:false});
+      renderAll(x,T,k,{cells:true,numbers:'none',flag:Math.max(12,3.4*k),map:false});
       pl.pages.forEach((pg,i)=>{const C=pageCorners(pg).map(([a,b])=>T(a,b));x.beginPath();C.forEach((P,j)=>j?x.lineTo(P[0],P[1]):x.moveTo(P[0],P[1]));x.closePath();
         x.fillStyle='rgba(215,38,46,.05)';x.fill();x.strokeStyle='#d7262e';x.lineWidth=2;x.stroke();});
       pl.pages.forEach((pg,i)=>{const P=T(pg.cx,pg.cy),rad=Math.max(14,Math.min(30,pg.hh*k*.35));
@@ -1616,6 +1664,22 @@ async function printBooklet(){
   finally{btn.disabled=false;}
 }
 $('pGo').onclick=printBooklet;
+$('pFitT').onclick=()=>{
+  if(!Gs.some(g=>g&&g.pts.length>1))return;snapshot();
+  const base=JSON.stringify(S.paths);const ok=f=>{S.paths=JSON.parse(base);scaleTrack(f);buildAll();return !!wholeFit(pFmt,1.5/S.laneW);};
+  let hi=1,lo=1;if(!ok(1)){lo=1;hi=.6;while(!ok(hi)&&hi>.02)hi*=.6;lo=hi/.6;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(ok(m))hi=m;else lo=m;}}
+  ok(hi);rebuild();updPrintInfo();toast(`Tracé réduit à ${Math.round(hi*100)} % · ${lapCells()} cases par tour · tient sur 1 ${pFmt.toUpperCase()}`);
+};
+$('pFit').onclick=()=>{
+  if(!Gs.some(g=>g&&g.pts.length>1))return;
+  if(S.lockProp===false){S.lockProp=true;}
+  snapshot();const old=S.caseScale||1;
+  const ok=f=>{S.caseScale=f;applyProp(S);buildAll();return !!wholeFit(pFmt,1.5/S.laneW);};
+  let lo=1,hi=1;if(ok(1)){hi=1;}else{hi=2;while(!ok(hi)&&hi<40)hi*=1.6;lo=hi/1.6;for(let i=0;i<14;i++){const m=(lo+hi)/2;if(ok(m))hi=m;else lo=m;}}
+  if(!ok(hi)){S.caseScale=old;applyProp(S);rebuild();toast('Impossible même à très petite échelle : essaie un format plus grand');return;}
+  S.caseScale=Math.ceil(hi*100)/100;applyProp(S);syncUI();rebuild();updPrintInfo();
+  toast(`Échelle du plateau : 1:${Math.round(250*S.caseScale)} — tout tient sur 1 ${pFmt.toUpperCase()}`);
+};
 $('bPng').onclick=()=>{
   if(!Gs.some(g=>g&&g.pts.length>1)){toast('Trace d’abord un circuit');return;}
   let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
